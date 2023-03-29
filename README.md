@@ -22,7 +22,6 @@ git push -uf origin main
 
 ## Integrate with your tools
 
-- [ ] [Set up project integrations](https://gitlab.com/vickyrams/earthid_2.0_mobile_app/-/settings/integrations)
 
 ## Collaborate with your team
 
