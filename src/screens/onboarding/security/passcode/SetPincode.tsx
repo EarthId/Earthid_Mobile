@@ -22,7 +22,8 @@ interface IHomeScreenProps {
 const Register = ({ navigation }: IHomeScreenProps) => {
   const [code, setCode] = useState();
   const onPinCodeChange = (code: any) => {
-    setCode(code);
+    var format = code.replace(/[^0-9]/g, "");
+    setCode(format);
   };
   const _navigateAction = async () => {
     if (code.length === 6) {
@@ -33,8 +34,9 @@ const Register = ({ navigation }: IHomeScreenProps) => {
     <View style={styles.sectionContainer}>
       <ScrollView contentContainerStyle={styles.sectionContainer}>
         <Header
-          isLogoAlone={true}
-          headingText={"Set Passcord"}
+          isBack
+          letfIconPress={() => navigation.goBack()}
+          headingText={"setpass"}
           linearStyle={styles.linearStyle}
           containerStyle={{
             iconStyle: {
@@ -61,7 +63,7 @@ const Register = ({ navigation }: IHomeScreenProps) => {
               ></Image>
             </View>
 
-            <GenericText
+            {/* <GenericText
               style={[
                 styles.categoryHeaderText,
                 {
@@ -72,8 +74,8 @@ const Register = ({ navigation }: IHomeScreenProps) => {
                 },
               ]}
             >
-              {SCREENS.SECURITYSCREEN.passcordInstruction}
-            </GenericText>
+              {SCREENS.SECURITYSCREEN.PasscodeInstruction}
+            </GenericText> */}
             <GenericText
               style={[
                 styles.categoryHeaderText,
@@ -85,25 +87,29 @@ const Register = ({ navigation }: IHomeScreenProps) => {
                 },
               ]}
             >
-              {SCREENS.SECURITYSCREEN.passcordInstructions}
+              {SCREENS.SECURITYSCREEN.PasscodeInstructions}
             </GenericText>
           </View>
-          <SmoothPinCodeInput
-            cellStyle={{
-              borderWidth: 0.5,
-              borderColor: Screens.grayShadeColor,
-              borderRadius: 5,
-            }}
-            cellStyleFocused={{
-              borderColor: Screens.colors.primary,
-              borderWidth: 2,
-            }}
-            password
-            cellSize={50}
-            codeLength={6}
-            value={code}
-            onTextChange={onPinCodeChange}
-          />
+
+          <View style={{ alignSelf: "center" }}>
+            <SmoothPinCodeInput
+              cellStyle={{
+                borderWidth: 0.5,
+                borderColor: Screens.grayShadeColor,
+                borderRadius: 5,
+              }}
+              cellStyleFocused={{
+                borderColor: Screens.colors.primary,
+                borderWidth: 2,
+              }}
+              password
+              cellSize={50}
+              codeLength={6}
+              value={code}
+              onTextChange={onPinCodeChange}
+            />
+          </View>
+
           <Button
             onPress={_navigateAction}
             style={{
@@ -117,7 +123,7 @@ const Register = ({ navigation }: IHomeScreenProps) => {
                 tintColor: Screens.pureWhite,
               },
             }}
-            title={"CREATE PASSCODE"}
+            title={"createpasscord"}
           ></Button>
         </View>
       </ScrollView>

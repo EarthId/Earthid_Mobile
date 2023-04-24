@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from "react";
-import { View, StyleSheet, Text, ScrollView, Image } from "react-native";
+import React, { useEffect, useState } from "react";
+import { View, StyleSheet, ScrollView, Image,TouchableOpacity,Alert } from "react-native";
 import Header from "../../../../components/Header";
 import { SCREENS } from "../../../../constants/Labels";
 import { Screens } from "../../../../themes";
@@ -8,14 +8,15 @@ import SmoothPinCodeInput from "react-native-smooth-pincode-input";
 import { LocalImages } from "../../../../constants/imageUrlConstants";
 import { useFetch } from "../../../../hooks/use-fetch";
 import { useAppDispatch, useAppSelector } from "../../../../hooks/hooks";
-import { api, MD5 } from "../../../../utils/earthid_account";
+import { alertBox, api, phoneOtp } from "../../../../utils/earthid_account";
 import AnimatedLoader from "../../../../components/Loader/AnimatedLoader";
 import SuccessPopUp from "../../../../components/Loader";
 import {
   approveOTP,
   byPassUserDetailsRedux,
-  contractCall,
 } from "../../../../redux/actions/authenticationAction";
+import { is } from "immer/dist/internal";
+import GenericText from "../../../../components/Text";
 
 interface IHomeScreenProps {
   navigation?: any;
@@ -27,71 +28,117 @@ const Register = ({ navigation, route }: IHomeScreenProps) => {
     navigation.navigate("ConfirmPincode");
   };
   const dispatch = useAppDispatch();
-  const contractDetails = useAppSelector((state) => state.contract);
-  const accountDetails = useAppSelector((state) => state.account);
-  const getGeneratedKeys = useAppSelector((state) => state.user);
+  const userDetails = useAppSelector((state) => state.account);
+
   const ApproveOtpResponse = useAppSelector((state) => state.ApproveOtp);
-  console.log("contractDetails", contractDetails);
+
   const { type } = route.params;
-  const { loading, data, error, fetch } = useFetch();
+  const {
+    loading: sendEmailLoading,
+    data: emailResponse,
+    error: isEmailError,
+    fetch: sendEmailOtp,
+  } = useFetch();
+
+  const {
+    loading: sendPhoneLoading,
+    data: phoneResponse,
+    error: sendPhoneError,
+    fetch: sendPhoneOtpAPI,
+  } = useFetch();
   const [code, setCode] = useState();
   const onPinCodeChange = (code: any) => {
-    setCode(code);
+    var format = code.replace(/[^0-9]/g, "");
+    setCode(format);
   };
   const sendOtp = () => {
     var postData = {
-      type: type,
-      value: contractDetails?.responseData?.email,
-      earthId: contractDetails?.responseData?.earthId,
-      publicKey: getGeneratedKeys?.responseData?.publicKey,
-      testnet: true,
+      email: userDetails?.responseData?.email,
+      earthId: userDetails?.responseData?.earthId,
+      publicKey: userDetails?.responseData?.publicKey,
     };
-    fetch(api, postData, "POST");
+    sendEmailOtp(api, postData, "POST");
   };
 
-  useEffect(() => {
-    if (!data) {
-      console.log("data", data);
-      sendOtp();
+  const sendPhoneOtp = () => {
+
+    var postPhoneData = {
+      phone: userDetails?.responseData?.phone,
+      earthId: userDetails?.responseData?.earthId,
+      publicKey: userDetails?.responseData?.publicKey,
+      countryCode: `${userDetails?.responseData?.countryCode}`,
+    };
+    sendPhoneOtpAPI(phoneOtp, postPhoneData, "POST");
+
+  };
+
+  const reSendData=()=>{
+
+    if(type=="phone"){
+      sendPhoneOtp()
+    }else{
+      sendOtp()
     }
-  }, [data]);
+   
+  }
 
   useEffect(() => {
-    if (ApproveOtpResponse?.responseData) {
-      let isEmailApproved = ApproveOtpResponse.responseData[1];
-      let overallResponseData = {
-        ...contractDetails.responseData,
-        ...{ emailApproved: isEmailApproved },
+    console.log("data", emailResponse);
+    if (!emailResponse?.success) {
+      if (type == "email") {
+        sendOtp();
+      }
+    }
+  }, [emailResponse]);
+
+  useEffect(() => {
+    console.log("data", phoneResponse);
+    if (!phoneResponse?.success) {
+      if (type !== "email") {
+        sendPhoneOtp();
+      }
+    }
+  }, [phoneResponse]);
+
+  console.log("ApproveOtpResponse", ApproveOtpResponse);
+  if (ApproveOtpResponse?.isApproveOtpSuccess) {
+    ApproveOtpResponse.isApproveOtpSuccess = false;
+
+    let overallResponseData;
+    if (type === "phone") {
+      overallResponseData = {
+        ...userDetails.responseData,
+        ...{ mobileApproved: true },
       };
-
-      dispatch(byPassUserDetailsRedux(overallResponseData)).then(() => {
-        navigation.navigate("ProfileScreen");
-      });
+    } else {
+      overallResponseData = {
+        ...userDetails.responseData,
+        ...{ emailApproved: true },
+      };
     }
-  }, [ApproveOtpResponse]);
+
+    dispatch(byPassUserDetailsRedux(overallResponseData)).then(() => {
+      navigation.navigate("ProfileScreen");
+    });
+  }
 
   const approveOtp = () => {
-    let encryptedOTP = MD5(getGeneratedKeys?.responseData?.publicKey + code);
     const request = {
-      functionName: "approveOTP",
-      functionParams: [
-        contractDetails?.responseData?.earthId,
-        type === "mobile" ? "1" : "2",
-        encryptedOTP.toString(),
-      ],
-      isViewOnly: false,
-      accountId: accountDetails?.responseData.toString().split(".")[2],
-      privateKey: getGeneratedKeys?.responseData.privateKey,
-      publicKey: getGeneratedKeys?.responseData.publicKey,
+      otp: code,
+      earthId: userDetails?.responseData?.earthId,
+      publicKey: userDetails?.responseData?.publicKey,
     };
-    dispatch(approveOTP(request));
+
+    dispatch(approveOTP(request, type));
   };
+
   return (
     <View style={styles.sectionContainer}>
       <ScrollView contentContainerStyle={styles.sectionContainer}>
         <Header
-          isLogoAlone={true}
-          headingText={"Set Passcord"}
+          letfIconPress={() => navigation.goBack()}
+          isBack={true}
+          headingText={type == "phone" ? "entermobotp" : "enteremailotp"}
           linearStyle={styles.linearStyle}
           containerStyle={{
             iconStyle: {
@@ -118,7 +165,7 @@ const Register = ({ navigation, route }: IHomeScreenProps) => {
               ></Image>
             </View>
 
-            <Text
+            <GenericText
               style={[
                 styles.categoryHeaderText,
                 {
@@ -129,38 +176,43 @@ const Register = ({ navigation, route }: IHomeScreenProps) => {
                 },
               ]}
             >
-              {SCREENS.SECURITYSCREEN.passcordInstruction}
-            </Text>
-            <Text
-              style={[
-                styles.categoryHeaderText,
-                {
-                  fontSize: 13,
-                  fontWeight: "500",
-                  textAlign: "center",
-                  color: Screens.grayShadeColor,
-                },
-              ]}
-            >
-              {SCREENS.SECURITYSCREEN.passcordInstructions}
-            </Text>
+              {"plsenterotp"}
+            </GenericText>
           </View>
-          <SmoothPinCodeInput
-            cellStyle={{
-              borderWidth: 0.5,
-              borderColor: Screens.grayShadeColor,
-              borderRadius: 5,
-            }}
-            cellStyleFocused={{
-              borderColor: Screens.colors.primary,
-              borderWidth: 2,
-            }}
-            password
-            cellSize={50}
-            codeLength={6}
-            value={code}
-            onTextChange={onPinCodeChange}
-          />
+          <View style={{ alignSelf: "center" }}>
+            <SmoothPinCodeInput
+              cellStyle={{
+                borderWidth: 0.5,
+                borderColor: Screens.grayShadeColor,
+                borderRadius: 5,
+              }}
+              cellStyleFocused={{
+                borderColor: Screens.colors.primary,
+                borderWidth: 2,
+              }}
+              password
+              cellSize={50}
+              codeLength={6}
+              value={code}
+              onTextChange={onPinCodeChange}
+            />
+              <TouchableOpacity onPress={() => reSendData()}>
+          <GenericText
+            style={[
+              {
+                fontSize: 13,
+                color: "#293FEE",
+                fontWeight: "500",
+                alignSelf: "flex-end",
+                marginTop: 8,
+                textDecorationLine: "underline",
+              },
+            ]}
+          >
+            {"resendcode"}
+          </GenericText>
+        </TouchableOpacity>
+          </View>
           <Button
             onPress={approveOtp}
             style={{
@@ -174,15 +226,24 @@ const Register = ({ navigation, route }: IHomeScreenProps) => {
                 tintColor: Screens.pureWhite,
               },
             }}
-            title={"SUBMIT"}
+            title={"submt"}
           ></Button>
           <AnimatedLoader
-            isLoaderVisible={loading || ApproveOtpResponse.isLoading}
+            isLoaderVisible={ApproveOtpResponse.isApproveLoading}
             loadingText="Loading..."
           />
           <SuccessPopUp
-            isLoaderVisible={ApproveOtpResponse?.responseData ? true : false}
-            loadingText={"Email verification succeeded"}
+            isLoaderVisible={
+              ApproveOtpResponse?.responseData &&
+              ApproveOtpResponse.isApproveOtpSuccess
+                ? true
+                : false
+            }
+            loadingText={
+              type === "phone"
+                ? "Mobile number verification successful"
+                : "Email verification successful"
+            }
           />
         </View>
       </ScrollView>

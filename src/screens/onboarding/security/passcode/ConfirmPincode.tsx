@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   StyleSheet,
@@ -16,6 +16,9 @@ import { LocalImages } from "../../../../constants/imageUrlConstants";
 import Loader from "../../../../components/Loader";
 import { StackActions } from "@react-navigation/native";
 import GenericText from "../../../../components/Text";
+import { useAppDispatch, useAppSelector } from "../../../../hooks/hooks";
+import { ESecurityTypes } from "../../../../typings/enums/Security";
+import { SaveSecurityConfiguration } from "../../../../redux/actions/LocalSavingActions";
 
 interface IHomeScreenProps {
   navigation?: any;
@@ -25,30 +28,68 @@ const Register = ({ navigation, route }: IHomeScreenProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [code, setCode] = useState();
   const [isError, setisError] = useState(false);
+  const dispatch = useAppDispatch();
+  const securityReducer: any = useAppSelector((state) => state.security);
+  console.log("savedCode", securityReducer);
+
+  const saveSelectionSecurities = () => {
+    let payLoad = [];
+    if (
+      securityReducer &&
+      securityReducer?.securityData &&
+      securityReducer?.securityData?.length > 0
+    )
+      payLoad = securityReducer?.securityData;
+    if (payLoad[0].types !== ESecurityTypes.PASSCORD) {
+      payLoad.push({
+        types: ESecurityTypes.PASSCORD,
+        enabled: true,
+      });
+    } else {
+      payLoad = payLoad.map(
+        (item: { types: ESecurityTypes; enabled: boolean }) => {
+          if (item.types === ESecurityTypes.PASSCORD) {
+            item.enabled = true;
+          }
+          return item;
+        }
+      );
+    }
+
+    dispatch(SaveSecurityConfiguration(payLoad));
+  };
   const savedCode = route.params?.setCode;
+  const { type } = route.params;
   const onPinCodeChange = (code: any) => {
     setisError(false);
-    setCode(code);
+    var format = code.replace(/[^0-9]/g, "");
+    setCode(format);
   };
   const _navigateAction = async () => {
-    console.log("savedCode", savedCode);
     if (savedCode === code?.toString()) {
       await AsyncStorage.setItem("passcode", code?.toString());
       setIsLoading(true);
       setTimeout(() => {
         setIsLoading(false);
-        navigation.dispatch(StackActions.replace("DrawerNavigator"));
+        saveSelectionSecurities();
+        actionToNavigate();
       }, 3000);
     } else {
       setisError(true);
     }
   };
+
+  const actionToNavigate = () => {
+    navigation.dispatch(StackActions.replace("DrawerNavigator"));
+  };
   return (
     <View style={styles.sectionContainer}>
       <ScrollView contentContainerStyle={styles.sectionContainer}>
         <Header
+          isBack
+          letfIconPress={() => navigation.goBack()}
           isLogoAlone={true}
-          headingText={"Confirm Passcord"}
+          headingText={"conpasscode"}
           linearStyle={styles.linearStyle}
           containerStyle={{
             iconStyle: {
@@ -89,24 +130,30 @@ const Register = ({ navigation, route }: IHomeScreenProps) => {
               {SCREENS.SECURITYSCREEN.confirmInstruction}
             </GenericText>
           </View>
-          <SmoothPinCodeInput
-            cellStyle={{
-              borderWidth: isError ? 1.5 : 0.5,
-              borderColor: isError ? "red" : Screens.grayShadeColor,
-              borderRadius: 5,
-            }}
-            cellStyleFocused={{
-              borderWidth: 2,
-              borderColor: Screens.colors.primary,
-            }}
-            password
-            cellSize={50}
-            codeLength={6}
-            value={code}
-            onTextChange={onPinCodeChange}
-          />
+
+          <View style={{ alignSelf: "center" }}>
+            <View style={{ alignSelf: "center" }}>
+              <SmoothPinCodeInput
+                cellStyle={{
+                  borderWidth: isError ? 1.5 : 0.5,
+                  borderColor: isError ? "red" : Screens.grayShadeColor,
+                  borderRadius: 5,
+                }}
+                cellStyleFocused={{
+                  borderWidth: 2,
+                  borderColor: Screens.colors.primary,
+                }}
+                password
+                cellSize={50}
+                codeLength={6}
+                value={code}
+                onTextChange={onPinCodeChange}
+              />
+            </View>
+          </View>
+
           {isError && (
-            <Text
+            <GenericText
               style={[
                 styles.categoryHeaderText,
                 {
@@ -117,8 +164,8 @@ const Register = ({ navigation, route }: IHomeScreenProps) => {
                 },
               ]}
             >
-              {"Please Enter valid code"}
-            </Text>
+              {"plsentervalid"}
+            </GenericText>
           )}
 
           <Button
@@ -134,11 +181,11 @@ const Register = ({ navigation, route }: IHomeScreenProps) => {
                 tintColor: Screens.pureWhite,
               },
             }}
-            title={"CREATE PASSCODE"}
+            title={"confirm"}
           ></Button>
           <Loader
-            loadingText="Passcord Generated successfully !"
-            Status="Success !"
+            loadingText="passcordgenerate"
+            Status={"status"}
             isLoaderVisible={isLoading}
           ></Loader>
         </View>

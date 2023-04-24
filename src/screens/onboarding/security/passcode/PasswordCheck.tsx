@@ -6,6 +6,7 @@ import {
   ScrollView,
   Image,
   AsyncStorage,
+  Alert,
 } from "react-native";
 import Header from "../../../../components/Header";
 import { Screens } from "../../../../themes";
@@ -13,6 +14,7 @@ import Button from "../../../../components/Button";
 import SmoothPinCodeInput from "react-native-smooth-pincode-input";
 import { LocalImages } from "../../../../constants/imageUrlConstants";
 import { StackActions } from "@react-navigation/native";
+import GenericText from "../../../../components/Text";
 
 interface IHomeScreenProps {
   navigation?: any;
@@ -22,22 +24,42 @@ interface IHomeScreenProps {
 const PasswordCheck = ({ navigation, route }: IHomeScreenProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [code, setCode] = useState();
+  const [count, setCount] = useState(4);
   const [isError, setisError] = useState(false);
-  const savedCode = route.params?.setCode;
   const onPinCodeChange = (code: any) => {
     setisError(false);
-    setCode(code);
+    var format = code?.replace(/[^0-9]/g, "");
+    setCode(format);
   };
 
   const _navigateAction = async () => {
-    console.log("savedCode", savedCode);
     const getItem = await AsyncStorage.getItem("passcode");
     if (getItem === code?.toString()) {
       setIsLoading(true);
       navigation.dispatch(StackActions.replace("DrawerNavigator"));
-    } else {
-      setisError(true);
     }
+    else if(count == 0){
+      Alert.alert('Oops!', `Too many attempts try again after sometimes`, [
+        {
+          text: 'Cancel',
+          onPress: () => console.log('Cancel Pressed'),
+          style: 'cancel',
+        },
+        {text: 'OK', onPress: () => console.log('OK Pressed')},
+      ]);
+    }
+    else {
+      setCount(count-1)
+        Alert.alert('Invalid Code', `You have left ${count} attempts`, [
+          {
+            text: 'Cancel',
+            onPress: () => console.log('Cancel Pressed'),
+            style: 'cancel',
+          },
+          {text: 'OK', onPress: () => console.log('OK Pressed')},
+        ]);
+    }
+    console.log("loff",count)
   };
 
   return (
@@ -45,7 +67,7 @@ const PasswordCheck = ({ navigation, route }: IHomeScreenProps) => {
       <ScrollView contentContainerStyle={styles.sectionContainer}>
         <Header
           isLogoAlone={true}
-          headingText={"Passcord Authentication"}
+          headingText={"Passcodeauth"}
           linearStyle={styles.linearStyle}
           containerStyle={{
             iconStyle: {
@@ -72,7 +94,7 @@ const PasswordCheck = ({ navigation, route }: IHomeScreenProps) => {
               ></Image>
             </View>
 
-            <Text
+            <GenericText
               style={[
                 styles.categoryHeaderText,
                 {
@@ -83,27 +105,31 @@ const PasswordCheck = ({ navigation, route }: IHomeScreenProps) => {
                 },
               ]}
             >
-              {"Please enter your passcode"}
-            </Text>
+              {"plsenterpass"}
+            </GenericText>
           </View>
-          <SmoothPinCodeInput
-            cellStyle={{
-              borderWidth: isError ? 1.5 : 0.5,
-              borderColor: isError ? "red" : Screens.grayShadeColor,
-              borderRadius: 5,
-            }}
-            cellStyleFocused={{
-              borderWidth: 2,
-              borderColor: Screens.colors.primary,
-            }}
-            password
-            cellSize={50}
-            codeLength={6}
-            value={code}
-            onTextChange={onPinCodeChange}
-          />
+
+          <View style={{ alignSelf: "center" }}>
+            <SmoothPinCodeInput
+              cellStyle={{
+                  borderWidth: isError ? 1.5 : 0.5,
+                  borderColor: isError ? "red" : Screens.grayShadeColor,
+                borderRadius: 5,
+              }}
+              cellStyleFocused={{
+                borderWidth: 2,
+                borderColor: Screens.colors.primary,
+              }}
+              password
+              cellSize={50}
+              codeLength={6}
+              value={code}
+              onTextChange={onPinCodeChange}
+            />
+          </View>
+
           {isError && (
-            <Text
+            <GenericText
               style={[
                 styles.categoryHeaderText,
                 {
@@ -114,11 +140,12 @@ const PasswordCheck = ({ navigation, route }: IHomeScreenProps) => {
                 },
               ]}
             >
-              {"Please Enter valid code"}
-            </Text>
+              {"plsentervalid"}
+            </GenericText>
           )}
 
           <Button
+          //  disabled={count ==0 ? true : false}
             onPress={_navigateAction}
             style={{
               buttonContainer: {
@@ -131,7 +158,7 @@ const PasswordCheck = ({ navigation, route }: IHomeScreenProps) => {
                 tintColor: Screens.pureWhite,
               },
             }}
-            title={"Sumbit"}
+            title={"submitt"}
           ></Button>
         </View>
       </ScrollView>

@@ -1,13 +1,24 @@
-rootProject.name = 'earthidnew'
+rootProject.name = 'EarthId'
+include ':react-native-view-pdf'
+project(':react-native-view-pdf').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-view-pdf/android')
+include ':react-native-view-pdf'
+project(':react-native-view-pdf').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-view-pdf/android')
+
+include ':react-native-pdf'
+project(':react-native-pdf').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-pdf/android')
+
+include ':react-native-share-menu', ':app'
+project(':react-native-share-menu').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-share-menu/android')
+
+include ':react-native-splash-screen'
+project(':react-native-splash-screen').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-splash-screen/android')
 include ':react-native-touch-id'
 project(':react-native-touch-id').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-touch-id/android')
-
 include ':react-native-image-base64'
 project(':react-native-image-base64').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-image-base64/android')
 include ':@react-native-community_cameraroll'
 project(':@react-native-community_cameraroll').projectDir = new File(rootProject.projectDir, '../node_modules/@react-native-community/cameraroll/android')
-include ':react-native-pdf-to-image'
-project(':react-native-pdf-to-image').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-pdf-to-image/android')
+
 include ':react-native-html-to-pdf'
 project(':react-native-html-to-pdf').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-html-to-pdf/android')
 include ':react-native-view-shot'
@@ -31,6 +42,8 @@ include ':react-native-linear-gradient'
 project(':react-native-linear-gradient').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-linear-gradient/android')
 apply from: file("../node_modules/@react-native-community/cli-platform-android/native_modules.gradle"); applyNativeModulesSettingsGradle(settings)
 include ':app'
+include ':app', ':react-native-code-push'
+project(':react-native-code-push').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-code-push/android/app')
 includeBuild('../node_modules/react-native-gradle-plugin')
 
 if (settings.hasProperty("newArchEnabled") && settings.newArchEnabled == "true") {

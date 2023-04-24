@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   StyleSheet,
@@ -6,6 +6,8 @@ import {
   PermissionsAndroid,
   Alert,
   BackHandler,
+  TouchableOpacity,
+  Image,
 } from "react-native";
 import Header from "../../../components/Header";
 import { SCREENS } from "../../../constants/Labels";
@@ -21,41 +23,42 @@ import Share from "react-native-share";
 import { AES_ENCRYPTION_SALT } from "../../../utils/earthid_account";
 import GenericText from "../../../components/Text";
 import { useAppSelector } from "../../../hooks/hooks";
+import { LocalImages } from "../../../constants/imageUrlConstants";
+import { isEarthId } from "../../../utils/PlatFormUtils";
 
 interface IHomeScreenProps {
   navigation?: any;
+  route?: any;
 }
 
-const AuthBackupIdentity = ({ navigation }: IHomeScreenProps) => {
-  const phoneInput: any = useRef();
+const AuthBackupIdentity = ({ navigation, route }: IHomeScreenProps) => {
   const [mobileNumber, setmobileNumber] = useState();
   const [isLoading, setIsLoading] = useState(false);
   let [qrBase64, setBase64] = useState("");
-  const getGeneratedKeys = useAppSelector((state) => state.user);
-  const accountDetails = useAppSelector((state) => state.account);
+  const userDetails = useAppSelector((state) => state.account);
   const viewShot: any = useRef();
 
   let qrData = {
-    accountId: accountDetails?.responseData.toString().split(".")[2],
-    passPhrase: getGeneratedKeys?.responseData.mnemonics,
+    accountId: userDetails?.responseData?.earthId,
   };
-  var encryptedString: any = CryptoJS.AES.encrypt(
-    JSON.stringify(qrData),
-    AES_ENCRYPTION_SALT
-  );
-  encryptedString = encryptedString.toString();
+  // var encryptedString: any = CryptoJS.AES.encrypt(
+  //   JSON.stringify(qrData),
+  //   AES_ENCRYPTION_SALT
+  // );
+  // encryptedString = encryptedString.toString();
 
-  const callback = (data: any) => {
-    console.log("data", data);
+  const dwFile = async (file_url: any) => {
+    await Share.open({ url: `data:image/png;base64,${file_url}` });
   };
+
   const capturePicture = () => {
     console.log("Capturing picture..");
 
     viewShot.current.capture().then(async (imageData: any) => {
       console.log("imageData", imageData);
       try {
-        await requestExternalStoragePermission();
-        await CameraRoll.save(imageData);
+        // await requestExternalStoragePermission();
+        // await CameraRoll.save(imageData);
         dwFile(imageData);
         ImgToBase64.getBase64String(imageData)
           .then((base64String: any) => dwFile(base64String))
@@ -66,10 +69,6 @@ const AuthBackupIdentity = ({ navigation }: IHomeScreenProps) => {
         navigation.goBack(null);
       }
     });
-  };
-
-  const dwFile = async (file_url: any) => {
-    await Share.open({ url: file_url });
   };
 
   const requestExternalStoragePermission = async () => {
@@ -109,12 +108,18 @@ const AuthBackupIdentity = ({ navigation }: IHomeScreenProps) => {
     );
   };
 
+  useEffect(() => {
+    console.log("route==>", route);
+  }, []);
+
   return (
     <View style={styles.sectionContainer}>
       <ScrollView contentContainerStyle={styles.sectionContainer}>
         <Header
           isLogoAlone={true}
-          headingText={"important"}
+          headingText={
+            route.name == "AuthBackupIdentity" ? "backupidentity" : "important"
+          }
           linearStyle={styles.linearStyle}
           containerStyle={{
             iconStyle: {
@@ -125,6 +130,24 @@ const AuthBackupIdentity = ({ navigation }: IHomeScreenProps) => {
             iconContainer: styles.alignCenter,
           }}
         ></Header>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={{
+            position: "absolute",
+            marginTop: 38,
+            marginLeft: 20,
+          }}
+        >
+          <Image
+            source={LocalImages.backImage}
+            style={{
+              height: 20,
+              width: 20,
+              resizeMode: "contain",
+              tintColor: isEarthId() ? Screens.pureWhite : Screens.black,
+            }}
+          />
+        </TouchableOpacity>
         <View style={styles.category}>
           <View>
             <GenericText
@@ -138,27 +161,16 @@ const AuthBackupIdentity = ({ navigation }: IHomeScreenProps) => {
                 },
               ]}
             >
-              {SCREENS.BACKUPIDENTYSCREEN.instruction}
-            </GenericText>
-            <GenericText
-              style={[
-                styles.categoryHeaderText,
-                {
-                  fontSize: 14,
-                  fontWeight: "500",
-                  textAlign: "center",
-                  color: Screens.black,
-                },
-              ]}
-            >
-              {SCREENS.BACKUPIDENTYSCREEN.instructions}
+              {isEarthId()
+                ? SCREENS.BACKUPIDENTYSCREEN.instructionEarthID
+                : SCREENS.BACKUPIDENTYSCREEN.instruction}
             </GenericText>
           </View>
           <View style={{ justifyContent: "center", alignItems: "center" }}>
             <ViewShot
               ref={viewShot}
               captureMode="update"
-              onCapture={(res) => {
+              onCapture={() => {
                 // console.log('on capture image response', res)
               }}
               options={{ format: "jpg", quality: 0.8 }}
@@ -168,7 +180,7 @@ const AuthBackupIdentity = ({ navigation }: IHomeScreenProps) => {
                   qrBase64 = base64;
                   setBase64(base64);
                 }}
-                value={encryptedString}
+                value={qrData.accountId}
                 size={250}
               />
             </ViewShot>

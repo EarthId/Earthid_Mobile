@@ -1,7 +1,17 @@
 import { values } from "lodash";
-import React, { useRef, useState } from "react";
-import { View, StyleSheet, Text, FlatList, ScrollView } from "react-native";
-import PhoneInput from "react-native-phone-number-input";
+import React, { useRef, useState, useEffect } from "react";
+import {
+  View,
+  StyleSheet,
+  FlatList,
+  ScrollView,
+  Platform,
+  PermissionsAndroid,
+  TouchableOpacity,
+  Image,
+  Alert,
+  AsyncStorage,
+} from "react-native";
 import Avatar from "../../components/Avatar";
 import BottomSheet from "../../components/Bottomsheet";
 import Header from "../../components/Header";
@@ -9,11 +19,18 @@ import Info from "../../components/Info";
 import { LocalImages } from "../../constants/imageUrlConstants";
 import { SCREENS } from "../../constants/Labels";
 import { Screens } from "../../themes";
+import DocumentPicker from "react-native-document-picker";
 import useFormInput from "../../hooks/use-text-input";
 import { nameValidator } from "../../utils/inputValidations";
 import TextInput from "../../components/TextInput";
 import Loader from "../../components/Loader";
-
+import { useAppDispatch, useAppSelector } from "../../hooks/hooks";
+import { byPassUserDetailsRedux } from "../../redux/actions/authenticationAction";
+import { useTheme } from "@react-navigation/native";
+import { savingProfilePictures } from "../../redux/actions/LocalSavingActions";
+import { RNCamera } from "react-native-camera";
+import GenericText from "../../components/Text";
+import * as ImagePicker from "react-native-image-picker";
 interface IHomeScreenProps {
   navigation?: any;
 }
@@ -21,20 +38,36 @@ interface IHomeScreenProps {
 const EditProfile = ({ navigation }: IHomeScreenProps) => {
   const [isCameraOptionVisible, setisCameraOptionVisible] =
     useState<boolean>(false);
-  const [mobileNumber, setmobileNumber] = useState();
+  const disPatch = useAppDispatch();
+  const profilePicture = useAppSelector((state) => state.savedPic);
+  const [isCamerVisible, setIsCameraVisible] = useState(false);
+  const camRef: any = useRef();
+  console.log("profilePicture", profilePicture);
+  const { colors } = useTheme();
   const [isLoading, setIsLoading] = useState(false);
   const phoneInput: any = useRef();
-
+  const [cameraDataUri, setcameraDataUri] = useState();
+  const userDetails = useAppSelector((state) => state.account);
+  const [Response, setResponse] = useState<any>("");
+  const [focus, setFocus] = useState<any>("");
+  const [nameFocus, setNameFocus] = useState<boolean>("");
   const _letfIconPress = () => {
     navigation.goBack();
   };
   const _navigateAction = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      navigation.goBack();
-    }, 5000);
+    let overallResponseData = {
+      ...userDetails.responseData,
+      ...{ username: fullName },
+    };
+    disPatch(byPassUserDetailsRedux(overallResponseData)).then(() => {
+      setIsLoading(true);
+      setTimeout(() => {
+        setIsLoading(false);
+        navigation.goBack();
+      }, 5000);
+    });
   };
+
   const {
     value: fullName,
     isFocused: fullNameFocus,
@@ -45,7 +78,7 @@ const EditProfile = ({ navigation }: IHomeScreenProps) => {
     valueChangeHandler: fullNameChangeHandler,
     inputFocusHandler: fullNameFocusHandlur,
     inputBlurHandler: fullNameBlurHandler,
-  } = useFormInput("RobertDowney", true, nameValidator);
+  } = useFormInput(userDetails?.responseData?.username, true, nameValidator);
 
   const {
     value: dateOfBirth,
@@ -66,17 +99,110 @@ const EditProfile = ({ navigation }: IHomeScreenProps) => {
       domain,
     })
   );
+  const [medialList, setmedialList] = useState(socialMedialList);
 
-  const _renderItem = ({ item }: any) => {
+  const onChangeHandler = (text: string, indexofItem: number) => {
+    const mediListLocal = socialMedialList.map((item, index) => {
+      if (indexofItem === index) {
+        item.domain = text;
+      }
+
+      return item;
+    });
+    setmedialList([...mediListLocal]);
+  };
+  const openCamera = async () => {
+    const options = { quality: 0.1, base64: true };
+    const data = await camRef.current.takePictureAsync(options);
+    console.log("data", data);
+    if (data) {
+      AsyncStorage.setItem("profilePic",data?.uri)
+      disPatch(savingProfilePictures(data?.uri));
+      setIsCameraVisible(false);
+      setcameraDataUri(data?.uri);
+    }
+  };
+  const requestPermission = async () => {
+    try {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+        {
+          title: "EarthId Storage Acess",
+          message: "EarthId needs access to your storage ",
+          buttonNeutral: "Ask Me Later",
+          buttonNegative: "Cancel",
+          buttonPositive: "OK",
+        }
+      );
+    } catch (err) {
+      console.log(err);
+    }
+  };
+  const openFilePicker = async () => {
+    if (Platform.OS == "android") {
+      await requestPermission();
+    }
+    try {
+      ImagePicker.launchImageLibrary(
+        ImagePicker.ImageLibraryOptions,
+        setResponse
+      );
+
+      // const resp: any = await DocumentPicker.pick({
+      //   type: [DocumentPicker.types.images, DocumentPicker.types.images],
+      //   readContent: true,
+      // });
+
+      // let fileUri = resp[0].uri;
+      // disPatch(savingProfilePictures(fileUri));
+      // setIsCameraVisible(false);
+      // setcameraDataUri(fileUri);
+    } catch (err) {
+      console.log("data==>", err);
+    }
+  };
+  useEffect(() => {
+    if(Response && Response?.assets){
+      console.log('Response==>sddwsdxsw',Response)
+      saveImage()
+    }
+  }, [Response]);
+
+
+  const saveImage = async() =>{
+    if(Response?.assets?.length>0){
+      console.log('ImageResult==>',Response?.assets[0]?.uri)
+      let fileUri = Response?.assets[0]?.uri;
+      disPatch(savingProfilePictures(fileUri));
+      setIsCameraVisible(false);
+      setcameraDataUri(fileUri);
+      setisCameraOptionVisible(false);
+      await AsyncStorage.setItem("profilePic",fileUri)
+
+  
+    }
+  }
+
+
+  const _renderItem = ({ item, index }: any) => {
     return (
       <View>
-        <Text style={[styles.categoryHeaderText, { fontSize: 13 }]}>
+        <GenericText style={[styles.categoryHeaderText, { fontSize: 13 }]}>
           {item.title}
-        </Text>
+        </GenericText>
 
         <TextInput
           style={{
-            container: styles.containerForSocialMedia,
+            container: [
+              styles.containerForSocialMedia,
+              {
+                borderColor:
+                  focus === index
+                    ? Screens.colors.primary
+                    : Screens.grayShadeColor,
+                borderWidth: focus === index ? 2 : 1,
+              },
+            ],
             leftIconStyle: {
               width: 15,
               height: 15,
@@ -86,15 +212,19 @@ const EditProfile = ({ navigation }: IHomeScreenProps) => {
           }}
           leftIcon={item.uri}
           value={item.domain}
-          onChangeText={dateOfBirthChangeHandler}
+          onChangeText={(text) => onChangeHandler(text, index)}
+          onFocus={() => setFocus(index) }
+          onBlur={()=>setFocus(false)}
+          // isFocused={true}
         />
       </View>
     );
   };
 
-  const ColoumnOption = ({ icon, title }: any) => (
+  const ColoumnOption = ({ icon, title, avatarClick }: any) => (
     <View>
       <Avatar
+        avatarClick={avatarClick}
         isUploaded={false}
         iconSource={icon}
         style={{
@@ -102,9 +232,11 @@ const EditProfile = ({ navigation }: IHomeScreenProps) => {
           imgContainer: styles.avatarImageContainer,
         }}
       />
-      <Text style={[styles.label, { fontSize: 12, textAlign: "center" }]}>
+      <GenericText
+        style={[styles.label, { fontSize: 12, textAlign: "center" }]}
+      >
         {title}
-      </Text>
+      </GenericText>
     </View>
   );
 
@@ -116,166 +248,170 @@ const EditProfile = ({ navigation }: IHomeScreenProps) => {
 
   return (
     <View style={styles.sectionContainer}>
-      <ScrollView contentContainerStyle={styles.sectionContainer}>
-        <Header
-          actionIcon={LocalImages.tikImage}
-          avatarClick={_avatarClick}
-          absoluteCircleInnerImage={LocalImages.cameraImage}
-          isProfileAvatar={true}
-          isUploaded={true}
-          letfIconPress={_letfIconPress}
-          leftIconSource={LocalImages.backImage}
-          isAvatar
-          onpress={_navigateAction}
-          linearStyle={styles.linearStyle}
-          containerStyle={{
-            iconStyle: {
-              width: 15,
-              height: 15,
-            },
-            iconContainer: styles.alignCenter,
-          }}
-        ></Header>
-        <View style={styles.category}>
-          <Info
-            title={"Full Name"}
-            style={{
-              title: styles.title,
-              subtitle: styles.subtitle,
-              container: styles.textContainer,
-            }}
-          />
-          <TextInput
-            style={{
-              container: styles.textInputContainer,
-            }}
-            isError={isfullNameError}
-            errorText={isfullNameErrorMessage}
-            onFocus={fullNameFocusHandlur}
-            onBlur={fullNameBlurHandler}
-            maxLength={60}
-            isFocused={fullNameFocus}
-            value={fullName}
-            onChangeText={fullNameChangeHandler}
-          />
-          <Info
-            title={"Date of Birth"}
-            style={{
-              title: styles.title,
-              subtitle: styles.subtitle,
-              container: styles.textContainer,
-            }}
-          />
-          <TextInput
-            style={{
-              container: styles.textInputContainer,
-            }}
-            rightIcon={LocalImages.calendarImage}
-            isError={dateOfBirthError}
-            errorText={dateOfBirthErrorMessage}
-            onFocus={dateOfBirthocusHandlur}
-            onBlur={dateOfBirthlurHandler}
-            maxLength={60}
-            isFocused={dateOfBirthFocus}
-            value={dateOfBirth}
-            onChangeText={dateOfBirthChangeHandler}
-          />
-          <Info
-            title={"Mobile Number"}
-            style={{
-              title: styles.title,
-              subtitle: styles.subtitle,
-              container: styles.textContainer,
-              subtitleNearText: styles.subtitleNearText,
-            }}
-          />
-          <PhoneInput
-            ref={phoneInput}
-            defaultValue={"0000000"}
-            defaultCode="IN"
-            layout="first"
-            onChangeText={(text: any) => {
-              setmobileNumber(text);
-            }}
-            containerStyle={{
-              borderColor: Screens.colors.primary,
-              width: 320,
-              borderWidth: 2.2,
-              borderRadius: 5,
-              height: 65,
-              marginLeft: 10,
-            }}
-            flagButtonStyle={{ backgroundColor: Screens.thickGray }}
-            textInputStyle={{ fontSize: 16, padding: 0, margin: 0 }}
-            codeTextStyle={{ fontSize: 16, padding: 0, margin: 0 }}
-            textContainerStyle={{
-              height: 55,
-              padding: 0,
-              margin: 0,
-            }}
-            withShadow
-            autoFocus
-          />
-          <Info
-            title={"Email"}
-            style={{
-              title: styles.title,
-              subtitle: styles.subtitle,
-              container: styles.textContainer,
-              subtitleNearText: styles.subtitleNearText,
-            }}
-          />
-          <TextInput
-            style={{
-              container: styles.textInputContainer,
-            }}
-            isError={isfullNameError}
-            errorText={isfullNameErrorMessage}
-            onFocus={fullNameFocusHandlur}
-            onBlur={fullNameBlurHandler}
-            maxLength={60}
-            isFocused={fullNameFocus}
-            value={fullName}
-            onChangeText={fullNameChangeHandler}
-          />
-        </View>
-
-        <BottomSheet
-          onClose={() => setisCameraOptionVisible(false)}
-          height={150}
-          isVisible={isCameraOptionVisible}
-        >
+      {isCamerVisible ? (
+        <View style={{ flex: 1 }}>
           <View
-            style={{
-              height: 100,
-              width: "100%",
-              paddingHorizontal: 50,
-              flexDirection: "row",
-              justifyContent: "space-around",
-            }}
+            style={{ position: "absolute", top: 20, right: 20, zIndex: 100 }}
           >
-            <ColoumnOption
-              title={"Remove phone"}
-              icon={LocalImages.deleteImage}
-            />
-            <ColoumnOption title={"Camera"} icon={LocalImages.cameraImage} />
-            <ColoumnOption title={"Gallery"} icon={LocalImages.galleryImage} />
+            <TouchableOpacity onPress={() => setIsCameraVisible(false)}>
+              <Image
+                resizeMode="contain"
+                style={[[styles.logoContainer, { tintColor: "#fff" }]]}
+                source={LocalImages.closeImage}
+              ></Image>
+            </TouchableOpacity>
           </View>
-        </BottomSheet>
-        <View style={styles.socialMediaContainer}>
-          <FlatList<any>
-            nestedScrollEnabled
-            data={socialMedialList}
-            renderItem={_renderItem}
-            keyExtractor={_keyExtractor}
-          />
+          <RNCamera
+            ref={camRef}
+            style={styles.preview}
+            androidCameraPermissionOptions={null}
+            type={RNCamera.Constants.Type.front}
+            captureAudio={false}
+          ></RNCamera>
+          <View style={{ backgroundColor: "#000" }}>
+            <View
+              style={{
+                width: 60,
+                height: 60,
+                borderRadius: 30,
+                backgroundColor: colors.primary,
+                alignSelf: "center",
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <TouchableOpacity onPress={() => openCamera()}>
+                <View
+                  style={{
+                    width: 50,
+                    height: 50,
+                    borderColor: "#fff",
+                    borderWidth: 1,
+                    borderRadius: 25,
+                    backgroundColor: "transparent",
+                  }}
+                ></View>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
-        <Loader
-          loadingText="Your Profile Details Updated successfully."
-          Status="Success !"
-          isLoaderVisible={isLoading}
-        ></Loader>
-      </ScrollView>
+      ) : (
+        <ScrollView contentContainerStyle={styles.sectionContainer}>
+          <Header
+            picUri={profilePicture?.profileData}
+            actionIcon={LocalImages.tikImage}
+            avatarClick={_avatarClick}
+            absoluteCircleInnerImage={LocalImages.cameraImage}
+            isProfileAvatar={true}
+            isUploaded={true}
+            letfIconPress={_letfIconPress}
+            leftIconSource={LocalImages.backImage}
+            isAvatar
+            isBack
+            onpress={_navigateAction}
+            linearStyle={styles.linearStyle}
+            containerStyle={{
+              iconStyle: {
+                width: 15,
+                height: 15,
+              },
+              iconContainer: styles.alignCenter,
+            }}
+          ></Header>
+          <View style={styles.category}>
+            <Info
+              title={"username"}
+              style={{
+                title: styles.title,
+                subtitle: styles.subtitle,
+                container: styles.textContainer,
+              }}
+            />
+
+            <TextInput
+              style={{
+                container: [
+                  styles.textInputContainer,
+                  {
+                    borderColor: nameFocus
+                      ? Screens.colors.primary
+                      : Screens.grayShadeColor,
+                    borderWidth: nameFocus ? 2 : 1,
+                  },
+                ],
+              }}
+              isError={isfullNameError}
+              errorText={isfullNameErrorMessage}
+              onFocus={fullNameFocusHandlur}
+              onBlur={fullNameBlurHandler}
+              // onFocus={() => setNameFocus(true)}
+              // onBlur={() => setNameFocus(false)}
+              maxLength={60}
+              isFocused={fullNameFocus}
+              value={fullName}
+              onChangeText={fullNameChangeHandler}
+             
+            />
+          </View>
+
+          <BottomSheet
+            onClose={() => setisCameraOptionVisible(false)}
+            height={150}
+            isVisible={isCameraOptionVisible}
+          >
+            <View
+              style={{
+                height: 100,
+                width: "100%",
+                paddingHorizontal: 50,
+                flexDirection: "row",
+                justifyContent: "space-around",
+              }}
+            >
+              <ColoumnOption
+                avatarClick={async() => {
+                  setisCameraOptionVisible(false);
+                  disPatch(savingProfilePictures(undefined));
+                  await AsyncStorage.removeItem("profilePic")
+                }}
+                title={"removephone"}
+                icon={LocalImages.deleteImage}
+              />
+
+              <ColoumnOption
+                avatarClick={() => {
+                  setisCameraOptionVisible(false);
+                  setIsCameraVisible(true);
+                }}
+                title={"camera"}
+                icon={LocalImages.cameraImage}
+              />
+
+              <ColoumnOption
+                avatarClick={() => {
+                  //  setisCameraOptionVisible(false);
+                  openFilePicker();
+                }}
+                title={"gallery"}
+                icon={LocalImages.galleryImage}
+              />
+            </View>
+          </BottomSheet>
+          <View style={styles.socialMediaContainer}>
+            <FlatList<any>
+              nestedScrollEnabled
+              data={medialList}
+              renderItem={_renderItem}
+              keyExtractor={_keyExtractor}
+            />
+          </View>
+          <Loader
+            loadingText="Your Profile Details Updated successfully."
+            Status="Success !"
+            isLoaderVisible={isLoading}
+          ></Loader>
+        </ScrollView>
+      )}
     </View>
   );
 };
@@ -311,6 +447,13 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     justifyContent: "center",
     paddingBottom: 30,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   subtitleNearText: {
     color: Screens.success,
@@ -324,10 +467,17 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
   },
   linearStyle: {
-    height: 250,
+    height: 310,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
     elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   categoryHeaderText: {
     marginHorizontal: 20,
@@ -347,11 +497,21 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 20,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   logoContainers: {
     width: 30,
     height: 30,
     tintColor: Screens.grayShadeColor,
+  },
+  preview: {
+    flex: 1,
   },
   alignCenter: { justifyContent: "center", alignItems: "center" },
   label: {
@@ -365,6 +525,13 @@ const styles = StyleSheet.create({
     marginHorizontal: 10,
     elevation: 5,
     borderRadius: 10,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   avatarContainer: {
     width: 60,
@@ -389,6 +556,11 @@ const styles = StyleSheet.create({
     title: {
       color: Screens.grayShadeColor,
     },
+  },
+  logoContainer: {
+    width: 30,
+    height: 30,
+    tintColor: Screens.colors.primary,
   },
   textInputContainer: {
     borderRadius: 10,

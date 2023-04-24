@@ -1,28 +1,231 @@
 import { values } from "lodash";
-import React, { useEffect } from "react";
-import { View, StyleSheet, Text, FlatList, Alert } from "react-native";
-import CircularProgress from "react-native-circular-progress-indicator";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import {
+  View,
+  StyleSheet,
+  FlatList,
+  ScrollView,
+  Image,
+  AsyncStorage,
+  TouchableOpacity,
+  Alert,
+  Platform,
+  AppState,
+} from "react-native";
 import { EventRegister } from "react-native-event-listeners";
+import RNFS from "react-native-fs";
 import Avatar from "../../../components/Avatar";
 import Card from "../../../components/Card";
 import Header from "../../../components/Header";
+import ShareMenu, { ShareMenuReactView } from "react-native-share-menu";
 import GenericText from "../../../components/Text";
+import { Linking } from "react-native";
 import { LocalImages } from "../../../constants/imageUrlConstants";
 import { SCREENS } from "../../../constants/Labels";
-import { useAppSelector } from "../../../hooks/hooks";
+import { useAppDispatch, useAppSelector } from "../../../hooks/hooks";
+import {
+  getHistory,
+  saveDocuments,
+} from "../../../redux/actions/authenticationAction";
+import { savingProfilePictures } from "../../../redux/actions/LocalSavingActions";
 import { Screens } from "../../../themes";
-import { alertBox } from "../../../utils/earthid_account";
+import { getColor } from "../../../utils/CommonFuntion";
+
+import { dateTime } from "../../../utils/encryption";
+import RNFetchBlob from "rn-fetch-blob";
+import { IDocumentProps } from "../../uploadDocuments/VerifiDocumentScreen";
+import NetInfo from '@react-native-community/netinfo';
 
 interface IHomeScreenProps {
   navigation?: any;
+  route?: any;
 }
+type SharedItem = {
+  mimeType: string;
+  data: string;
+  extraData: any;
+};
 
-const HomeScreen = ({ navigation }: IHomeScreenProps) => {
-  const contractDetails = useAppSelector((state) => state.contract);
+const HomeScreen = ({ navigation, route }: IHomeScreenProps) => {
+  const userDetails = useAppSelector((state) => state.account);
+  const getHistoryReducer = useAppSelector((state) => state.getHistoryReducer);
+  const profilePicture = useAppSelector((state) => state.savedPic);
+  const securityReducer: any = useAppSelector((state) => state.security);
+  const disPatch = useAppDispatch();
+
+  let flatListRef: any = useRef();
+
+  //recent activity
+  let documentsDetailsList = useAppSelector((state) => state.Documents);
+  let recentData = documentsDetailsList?.responseData;
+  const [aState, setAppState] = useState(AppState.currentState);
+  useEffect(() => {
+    const appStateListener = AppState.addEventListener(
+      'change',
+      nextAppState => {
+        console.log('Next AppState is: ', nextAppState);
+        if(nextAppState==='active'){
+          ShareMenu.getInitialShare(handleShare);
+        }
+        setAppState(nextAppState);
+      },
+    );
+    return () => {
+      appStateListener?.remove();
+    };
+  }, []);
+  const [recentDataOfDocument, setrecentData] = useState([]);
+  const dispatch = useAppDispatch();
   const _toggleDrawer = () => {
     navigation.openDrawer();
   };
-  console.log("contractDetails", contractDetails);
+
+  async function convertToBase64(path: string) {
+    const result = await RNFS.readFile(path, "base64");
+    return `data:image/png;base64,${result}`;
+  }
+
+  useEffect(() => {
+    ShareMenu.getInitialShare(handleShare);
+  }, []);
+
+  const handleShare = useCallback(async (item: SharedItem | null) => {
+    if (!item) {
+      return;
+    }
+    if (Platform.OS === "android") {
+      const { mimeType, data, extraData } = item;
+      console.log("datamimeType", data);
+      console.log("datamimeType", extraData);
+
+      if (
+        mimeType === "image/*" ||
+        mimeType === "image/jpeg" ||
+        mimeType === "image/png"
+      ) {
+        const imagePath = data;
+        const base64 = await convertToBase64(imagePath);
+        const fileUri = {
+          base64: base64,
+          type: mimeType,
+          uri: base64,
+          flow: "deeplink",
+          file: {
+            uri: base64,
+          },
+        };
+        navigation.navigate("DocumentPreviewScreen", { fileUri: fileUri });
+      } else {
+        const imagePath = data;
+        const base64 = await RNFS.readFile(imagePath, "base64");
+        console.log("data====>", base64);
+        const fileUri = {
+          base64: base64,
+          type: mimeType,
+          uri: base64,
+          flow: "deeplink",
+          file: {
+            uri: base64,
+          },
+        };
+        navigation.navigate("DocumentPreviewScreen", { fileUri: fileUri });
+      }
+    } else {
+      const { mimeType, data, extraData } = item;
+      console.log("datamimeType", extraData);
+      console.log("extraData?.mimeType", extraData?.mimeType);
+
+      if (
+        extraData?.mimeType === "image/*" ||
+        extraData?.mimeType === "image/jpeg" ||
+        extraData?.mimeType === "image/png" ||
+        extraData?.mimeType === "text/plain"
+      ) {
+        const imagePath = extraData?.data?.replaceAll("%20", " ");
+        const base64 = await convertToBase64(imagePath);
+
+        const fileUri = {
+          base64: imagePath,
+          type: extraData?.mimeType,
+          uri: imagePath,
+          flow: "deeplink",
+          imagePath: imagePath,
+          file: {
+            uri: base64,
+          },
+        };
+        navigation.navigate("DocumentPreviewScreen", { fileUri: fileUri });
+      } else {
+        const imagePath = extraData?.data?.replaceAll("%20", " ");
+        const base64 = await RNFS.readFile(imagePath, "base64");
+        console.log("data====>", base64);
+        const fileUri = {
+          base64: base64,
+          type: extraData?.mimeType,
+          uri: base64,
+          flow: "deeplink",
+          file: {
+            uri: base64,
+          },
+        };
+        navigation.navigate("DocumentPreviewScreen", { fileUri: fileUri });
+      }
+    }
+  }, []);
+  const uploadPdf = (base64: string) => {};
+  const validateImages = (base64: string) => {
+    // AddDocumehtfetch(CreateHistory, payLoad, "POST");
+    setTimeout(() => {
+      var date = dateTime();
+      const filePath = RNFetchBlob.fs.dirs.DocumentDir + "/" + "Adhaar";
+      var documentDetails: IDocumentProps = {
+        id: `ID_VERIFICATION`,
+        name: "Id",
+        path: filePath,
+        date: date?.date,
+        time: date?.time,
+        txId: "",
+        docType: "jpg",
+        docExt: ".jpg",
+        processedDoc: "",
+        base64: base64,
+        categoryType: "insurance",
+        vc: undefined,
+        isVc: false,
+        color: "rgba(191, 245, 206, 1)",
+      };
+     console.log('documentsDetailsList?.responseData',documentsDetailsList?.responseData)
+      var DocumentList = documentsDetailsList?.responseData
+        ? documentsDetailsList?.responseData
+        : [];
+      DocumentList.push(documentDetails);
+      dispatch(saveDocuments(DocumentList));
+      getHistoryReducer.isSuccess = false;
+      setTimeout(() => {
+       
+      }, 2000);
+    }, 200);
+  };
+  useEffect(() => {
+    console.log('recentData====>',recentData)
+    if (documentsDetailsList) {
+      let recentDataFillerWithColor: any =recentData &&  recentData?.map(
+        (item: any, index: any) => {
+          let colors = item?.documentName;
+          let iteName = colors?.trim()?.split("(")[0].trim();
+          console.log("recentDataFillerWithColor====>", iteName);
+          item.color = getColor(iteName);
+          return item;
+        }
+      );
+      if (recentDataFillerWithColor?.length > 0) {
+        setrecentData(recentDataFillerWithColor);
+      }else{
+        setrecentData([]);
+      }
+    }
+  }, [documentsDetailsList]);
+
   const categoryList = values(SCREENS.HOMESCREEN.categoryList).map(
     ({ TITLE: title, URI: uri, COLOR: color }: any) => ({
       title,
@@ -38,9 +241,35 @@ const HomeScreen = ({ navigation }: IHomeScreenProps) => {
     })
   );
 
+
+  const isNetworkConnect=()=>{
+  
+    NetInfo.fetch().then((state) => {
+      console.log("isconnect", state.isConnected);
+      if (!state.isConnected) {
+        Alert.alert(
+          'Network not connected',
+          'Please check your internet connection and try again.',
+          [{ text: 'OK' }],
+          { cancelable: false },
+        );
+      }
+    });
+  }
+  
+  
+  useEffect(()=>{
+    isNetworkConnect()
+  },[])
+
+
   const _renderItem = ({ item }: any) => {
     return (
       <Avatar
+        avatarClick={() =>
+          navigation.navigate("Documents", { category: item.title })
+        }
+        isCategory={true}
         isUploaded={false}
         text={item.title}
         iconSource={item.uri}
@@ -68,7 +297,9 @@ const HomeScreen = ({ navigation }: IHomeScreenProps) => {
   const _avatarClick = () => {
     navigation.navigate("ProfileScreen");
   };
-
+  if (getHistoryReducer?.isSuccess) {
+    getHistoryReducer.isSuccess = false;
+  }
   useEffect(() => {
     const listener: any = EventRegister.addEventListener("OpenDrawer", () => {
       navigation.openDrawer();
@@ -79,61 +310,218 @@ const HomeScreen = ({ navigation }: IHomeScreenProps) => {
       listener;
     };
   });
+  useEffect(() => {
+    setMetrics();
+  }, []);
 
-  const _keyExtractor = ({ title }: any) => title.toString();
+  const setMetrics = async () => {
+    await AsyncStorage.setItem("pageName", "Home");
+  };
+  // useEffect(() => {
+  //   const PayLoad = {
+  //     userId: userDetails?.responseData?.Id,
+  //     publicKey: userDetails?.responseData?.publicKey,
+  //   };
+  //   dispatch(getHistory(PayLoad));
+  //   setValueSecurity();
+  //   console.log("items==>", userDetails);
+  // }, []);
+
+  useEffect(() => {
+    getImage();
+  }, []);
+
+  const getImage = async () => {
+    const profilePic = await AsyncStorage.getItem("profilePic");
+    disPatch(savingProfilePictures(profilePic));
+  };
+
+  const _renderItemHistory = ({ item }: any) => {
+    return (
+      <TouchableOpacity
+        onPress={() =>
+          navigation.navigate("ViewCredential", { documentDetails: item })
+        }
+      >
+        {item?.docName && item?.docName !== undefined && (
+          <Card
+            leftAvatar={LocalImages.documentsImage}
+            absoluteCircleInnerImage={LocalImages.upImage}
+            // rightIconSrc={LocalImages.menuImage}
+            title={item?.docName}
+            subtitle={`      Uploaded  : ${item.date}`}
+            style={{
+              ...styles.cardContainers,
+              ...{
+                avatarContainer: {
+                  backgroundColor: item.color,
+                  width: 60,
+                  height: 60,
+                  borderRadius: 20,
+                  marginTop: 25,
+                  marginLeft: 10,
+                  marginRight: 5,
+                },
+                uploadImageStyle: {
+                  backgroundColor: item?.color,
+                  borderRadius: 25,
+                  borderWidth: 3,
+                  bordercolor: "#fff",
+                  borderWidthRadius: 25,
+                },
+              },
+              title: {
+                fontSize: 18,
+                marginTop: -10,
+                fontWeight: "bold",
+              },
+              subtitle: {
+                fontSize: 14,
+                marginTop: 5,
+              },
+            }}
+          />
+        )}
+      </TouchableOpacity>
+    );
+  };
+
   return (
     <View style={styles.sectionContainer}>
-      <Header
-        leftIconSource={LocalImages.logoImage}
-        rewardPoints={"50"}
-        rightIconSource={LocalImages.giftBoxImage}
-        isAvatar
-        profileName={contractDetails?.responseData?.name}
-        avatarClick={_avatarClick}
-        onpress={() => {
-          _toggleDrawer();
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          flexGrow: 1,
+          paddingBottom: 200,
+          backgroundColor: "#fff",
         }}
-        linearStyle={styles.linearStyle}
-      ></Header>
-      <View style={styles.flatPanel}>
-        <View style={styles.alignCenter}>
-          <Text style={[styles.label, { fontSize: 12 }]}>
-            {SCREENS.HOMESCREEN.appName}
-          </Text>
-          <Text style={[styles.label, { fontSize: 16 }]}>
-            {contractDetails?.responseData?.earthId}
-          </Text>
+      >
+        <View>
+          <Header
+            picUri={profilePicture?.profileData}
+            subCatSideArrowVisible
+            leftIconSource={LocalImages.logoImage}
+            // rewardPoints={"50"}
+            // rightIconSource={LocalImages.giftBoxImage}
+            isAvatar
+            avatarClick={_avatarClick}
+            onpress={() => {
+              _toggleDrawer();
+            }}
+            linearStyle={styles.linearStyle}
+          ></Header>
+          <View style={styles.flatPanel}>
+            <View style={styles.alignCenter}>
+              <GenericText style={[styles.label, { fontSize: 12 }]}>
+                {SCREENS.HOMESCREEN.appName}
+              </GenericText>
+              <GenericText style={[styles.label, { fontSize: 16 }]}>
+                {userDetails?.responseData?.earthId}
+              </GenericText>
+            </View>
+            {/* <CircularProgress
+              value={60}
+              radius={30}
+              activeStrokeWidth={5}
+              activeStrokeColor={Screens.colors.primary}
+            /> */}
+          </View>
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+            }}
+          >
+            <View>
+              <GenericText
+                style={[styles.categoryHeaderText, { fontSize: 13 }]}
+              >
+                {SCREENS.HOMESCREENTITLES.CATEGORIES}
+              </GenericText>
+            </View>
+
+            <View style={{ flexDirection: "row" }}>
+              <TouchableOpacity
+                style={{
+                  width: 20,
+                  height: 20,
+                  alignSelf: "center",
+                  marginRight: 40,
+                }}
+                onPress={() => flatListRef.scrollToIndex({ index: 0 })}
+              >
+                <Image
+                  source={LocalImages.backicon}
+                  style={{
+                    width: 20,
+                    height: 20,
+                    tintColor: "gray",
+                    alignSelf: "center",
+                  }}
+                />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{
+                  width: 20,
+                  height: 20,
+                  alignSelf: "center",
+                }}
+                onPress={() => flatListRef.scrollToEnd()}
+              >
+                <Image
+                  source={LocalImages.nexticon}
+                  style={{
+                    width: 20,
+                    height: 20,
+                    tintColor: "gray",
+                    alignSelf: "center",
+                    marginRight: 50,
+                  }}
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+          <View style={[styles.flatPanel, { height: 130, marginTop: -10 }]}>
+            <FlatList<any>
+              horizontal
+              ref={(ref) => {
+                flatListRef = ref;
+              }}
+              showsHorizontalScrollIndicator={false}
+              data={categoryList}
+              renderItem={_renderItem}
+            />
+          </View>
+          <GenericText style={[styles.categoryHeaderText, { fontSize: 13 }]}>
+            {SCREENS.HOMESCREEN.documentLabel}
+          </GenericText>
+          <FlatList<any>
+            showsHorizontalScrollIndicator={false}
+            // data={
+            //   getHistoryReducer && getHistoryReducer?.responseData
+            //     ? getHistoryReducer.responseData
+            //     : []
+            // }
+            data={recentDataOfDocument}
+            inverted
+            renderItem={_renderItemHistory}
+          />
+          {/* <AnimatedLoader
+            isLoaderVisible={getHistoryReducer?.isLoading}
+            loadingText="loading"
+          /> */}
+          {recentDataOfDocument && recentDataOfDocument?.length === 0 && (
+            <View style={{ justifyContent: "center", alignItems: "center" }}>
+              <Image
+                resizeMode="contain"
+                style={[styles.logoContainer]}
+                source={LocalImages.recent}
+              ></Image>
+            </View>
+          )}
         </View>
-        <CircularProgress
-          value={60}
-          radius={30}
-          activeStrokeWidth={5}
-          activeStrokeColor={Screens.colors.primary}
-        />
-      </View>
-      <GenericText style={[styles.categoryHeaderText, { fontSize: 13 }]}>
-        {SCREENS.HOMESCREENTITLES.CATEGORIES}
-      </GenericText>
-      <View style={[styles.flatPanel, { height: 130, marginTop: -10 }]}>
-        <FlatList<any>
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          data={categoryList}
-          renderItem={_renderItem}
-          keyExtractor={_keyExtractor}
-        />
-      </View>
-      <GenericText style={[styles.categoryHeaderText, { fontSize: 13 }]}>
-        {SCREENS.HOMESCREEN.documentLabel}
-      </GenericText>
-      <View>
-        <FlatList<any>
-          scrollEnabled={false}
-          data={documentList}
-          renderItem={_renderItemDocuments}
-          keyExtractor={_keyExtractor}
-        />
-      </View>
+      </ScrollView>
     </View>
   );
 };
@@ -144,7 +532,7 @@ const styles = StyleSheet.create({
     backgroundColor: Screens.colors.background,
   },
   linearStyle: {
-    height: 250,
+    height: 330,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
     elevation: 4,
@@ -152,6 +540,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.5,
     shadowRadius: 2,
     shadowColor: "#000",
+  },
+  logoContainer: {
+    width: 200,
+    height: 150,
+    resizeMode: "contain",
   },
   flatPanel: {
     marginHorizontal: 25,
@@ -207,6 +600,36 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginVertical: 5,
     borderRadius: 20,
+  },
+  cardContainers: {
+    flex: 1,
+    marginHorizontal: 20,
+    marginVertical: 10,
+    elevation: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 2,
+    alignItems: "center",
+    borderRadius: 20,
+    backgroundColor: Screens.pureWhite,
+    title: {
+      color: Screens.black,
+    },
+    textContainer: {
+      justifyContent: "center",
+      alignItems: "center",
+    },
+
+    avatarImageContainer: {
+      width: 25,
+      height: 30,
+      marginTop: 5,
+    },
+    avatarTextContainer: {
+      fontSize: 13,
+      fontWeight: "500",
+    },
   },
 });
 

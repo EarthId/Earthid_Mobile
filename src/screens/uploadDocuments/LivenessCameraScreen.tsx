@@ -1,26 +1,40 @@
 import { useTheme } from "@react-navigation/native";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   StyleSheet,
   Image,
   TouchableOpacity,
-  Text,
-  Alert,
   Platform,
+  
 } from "react-native";
 import { RNCamera } from "react-native-camera";
 
-import Button from "../../components/Button";
 import { SnackBar } from "../../components/SnackBar";
+import GenericText from "../../components/Text";
 import { LocalImages } from "../../constants/imageUrlConstants";
 import { Screens } from "../../themes/index";
 import DocumentMask from "../uploadDocuments/DocumentMask";
+import Snackbar from "react-native-snackbar";
 
 const LivenessCameraScreen = (props: any) => {
-  const { fileUri } = props.route.params;
+  const { fileUri, selectedDocument } = props.route.params;
+  const { pic } = props.route.params;
+  const { editDoc,selectedItem } = props.route.params;
+  const { docname } = props.route.params;
   const [maskedColor, setmaskedColor] = useState("#fff");
   const [data, setData] = useState();
+  const itemData = props?.route.params?.itemData;
+
+  console.log("picLOG",fileUri)
+  console.log("picLOG",selectedItem)
+  console.log("picLOG", docname)
+
+  useEffect(() => {
+    if (data) {
+      handlingFacialData();
+    }
+  }, [data]);
   // Initial state of variables
   let rightEyeOpen: any[] = [];
   let camera: {
@@ -45,7 +59,7 @@ const LivenessCameraScreen = (props: any) => {
   const _handleBarCodeRead = async (faceArray: any) => {
     if (!faceDetected) {
       // Face Recognition algorithm
-      if (faceArray.faces.length === 1 && faceCount < 15) {
+      if (faceArray.faces.length === 1 && faceCount < 2) {
         var id = faceArray.faces[0].faceID;
         if (faceId === null) {
           faceId = id;
@@ -59,7 +73,7 @@ const LivenessCameraScreen = (props: any) => {
       } else {
         var avg = average(rightEyeOpen);
         var min = Math.min(...rightEyeOpen);
-        var threshold = avg / 2;
+        var threshold = avg / 5;
         var hasMoved = false;
         for (let index = 0; index < faceOrigin.length - 1; index++) {
           var displacement = distance(
@@ -68,33 +82,34 @@ const LivenessCameraScreen = (props: any) => {
             faceOrigin[index + 1].x,
             faceOrigin[index + 1].y
           );
-          if (displacement > 30) {
+
+          if (displacement < 0) {
+            console.log("displacement", displacement);
             hasMoved = true;
             if (stillToast) {
-              SnackBar({
-                indicationMessage: "Be still like a stone !",
-              });
               setmaskedColor("red");
-            } else {
-              setmaskedColor("red");
-              SnackBar({
-                indicationMessage: "I can still see you moving",
-              });
             }
             break;
           }
         }
         if (!hasMoved && avg > 0.5) {
-          console.log(avg, min);
-          if (min < threshold && faceId === faceArray.faces[0].faceID) {
+          console.log("ReadData",avg, min);
+          Snackbar.show({
+            text: 'Please look into the camera',
+            duration: Snackbar.LENGTH_SHORT,
+            
+             
+          });
+          
+          if (faceId === faceArray.faces[0].faceID) {
             setmaskedColor("green");
             SnackBar({
-              indicationMessage: "Aww, Thank you",
+              indicationMessage: "Thank you",
             });
 
             faceDetected = true;
             const options = {
-              quality: 0.5,
+              quality: 0.2,
               base64: true,
             };
             const data = await camRef.current.takePictureAsync(options);
@@ -102,9 +117,6 @@ const LivenessCameraScreen = (props: any) => {
               setData(data);
             }
           } else {
-            SnackBar({
-              indicationMessage: "I can still see you moving",
-            });
           }
         }
         faceOrigin = [];
@@ -118,22 +130,36 @@ const LivenessCameraScreen = (props: any) => {
   const camRef: any = useRef();
 
   const handlingFacialData = async () => {
-    if (data) {
-      props.navigation.navigate("VerifiDocumentScreen", {
-        uploadedDocuments: fileUri,
-        faceImageData: data,
-      });
-    }
+  
     if (Platform.OS === "ios") {
       const options = {
         quality: 0.5,
         base64: true,
       };
       const datas = await camRef.current.takePictureAsync(options);
-      if (datas) {
+      if (datas || data) {
         props.navigation.navigate("VerifiDocumentScreen", {
           uploadedDocuments: fileUri,
           faceImageData: data,
+          selectedDocument,
+          pic:fileUri,
+          selectedItem,
+          editDoc,
+          docname
+        });
+      }
+    }else{
+      if (data) {
+        props.navigation.navigate("VerifiDocumentScreen", {
+          uploadedDocuments: fileUri,
+          faceImageData: data,
+          selectedDocument,
+          pic:fileUri,
+          image:pic,
+          itemData:itemData,
+          editDoc,
+          selectedItem,
+          docname
         });
       }
     }
@@ -170,44 +196,12 @@ const LivenessCameraScreen = (props: any) => {
       >
         <DocumentMask color={maskedColor} />
       </RNCamera>
-      <Text
-        style={{
-          textAlign: "center",
-          paddingVertical: 5,
-          fontWeight: "bold",
-          fontSize: 16,
-          color: "#fff",
-        }}
+
+      <GenericText
+        style={{ textAlign: "center", paddingVertical: 5, color: "#fff" }}
       >
-        Capture
-      </Text>
-      <Text style={{ textAlign: "center", paddingVertical: 5, color: "#fff" }}>
-        Place your face inside the live box!
-      </Text>
-      <TouchableOpacity onPress={data && handlingFacialData}>
-        <View
-          style={{
-            width: 60,
-            height: 60,
-            borderRadius: 30,
-            backgroundColor: colors.primary,
-            alignSelf: "center",
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-        >
-          <View
-            style={{
-              width: 50,
-              height: 50,
-              borderColor: "#fff",
-              borderWidth: 1,
-              borderRadius: 25,
-              backgroundColor: "transparent",
-            }}
-          ></View>
-        </View>
-      </TouchableOpacity>
+        {"placeurfacelivebox"}
+      </GenericText>
     </View>
   );
 };

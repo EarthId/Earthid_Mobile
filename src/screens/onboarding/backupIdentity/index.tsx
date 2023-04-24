@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   StyleSheet,
@@ -6,7 +6,10 @@ import {
   PermissionsAndroid,
   Alert,
   BackHandler,
-  Platform,
+  TouchableOpacity,
+  Image,
+  ActivityIndicator,
+  AsyncStorage,
 } from "react-native";
 import Header from "../../../components/Header";
 import { SCREENS } from "../../../constants/Labels";
@@ -21,29 +24,50 @@ import Button from "../../../components/Button";
 import Share from "react-native-share";
 import { AES_ENCRYPTION_SALT } from "../../../utils/earthid_account";
 import GenericText from "../../../components/Text";
-import { useAppSelector } from "../../../hooks/hooks";
+import { useAppDispatch, useAppSelector } from "../../../hooks/hooks";
+import { IUserSchemaRequest } from "../../../typings/AccountCreation/IUserSchema";
+import {
+  byPassUserDetailsRedux,
+  createSchema,
+} from "../../../redux/actions/authenticationAction";
+import { LocalImages } from "../../../constants/imageUrlConstants";
+import { useFetch } from "../../../hooks/use-fetch";
+import { isEarthId } from "../../../utils/PlatFormUtils";
 
 interface IHomeScreenProps {
   navigation?: any;
+  route?: any;
 }
 
-const Register = ({ navigation }: IHomeScreenProps) => {
+const Register = ({ navigation,route }: IHomeScreenProps) => {
   const [mobileNumber, setmobileNumber] = useState();
   const [isLoading, setIsLoading] = useState(false);
   let [qrBase64, setBase64] = useState("");
-  const getGeneratedKeys = useAppSelector((state) => state.user);
-  const accountDetails = useAppSelector((state) => state.account);
+  const userDetails = useAppSelector((state) => state.account);
   const viewShot: any = useRef();
+  const { loading: getUserLoading } = useFetch();
+  const dispatch = useAppDispatch();
 
   let qrData = {
-    accountId: accountDetails?.responseData.toString().split(".")[2],
-    passPhrase: getGeneratedKeys?.responseData.mnemonics,
+    earthId: userDetails?.responseData.earthId,
   };
-  var encryptedString: any = CryptoJS.AES.encrypt(
-    JSON.stringify(qrData),
-    AES_ENCRYPTION_SALT
-  );
-  encryptedString = encryptedString.toString();
+
+  let data = {
+    email: userDetails?.responseData.email,
+    mobile: userDetails?.responseData.phone,
+    username: userDetails?.responseData.username,
+  };
+
+  const dwFile = async (file_url: any) => {
+    await Share.open({ url: `data:image/png;base64,${file_url}` });
+  };
+
+  useEffect(() => {
+    setMetrics();
+  }, []);
+  const setMetrics = async () => {
+    await AsyncStorage.setItem("pageName", "BackupIdentity");
+  };
 
   const capturePicture = () => {
     console.log("Capturing picture..");
@@ -51,46 +75,19 @@ const Register = ({ navigation }: IHomeScreenProps) => {
     viewShot.current.capture().then(async (imageData: any) => {
       console.log("imageData", imageData);
       try {
-        if (Platform.OS === "android") {
-          await requestExternalStoragePermission();
-        }
-
-        await CameraRoll.save(imageData);
+        // await requestExternalStoragePermission();
+        //  await CameraRoll.save(imageData);
         dwFile(imageData);
         ImgToBase64.getBase64String(imageData)
           .then((base64String: any) => dwFile(base64String))
           .catch(() => console.log("error"));
+
         navigation.navigate("Security");
       } catch (error) {
         console.log("error", error);
         navigation.navigate("Security");
       }
     });
-  };
-
-  const dwFile = async (file_url: any) => {
-    await Share.open({ url: file_url });
-  };
-
-  const requestExternalStoragePermission = async () => {
-    try {
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE
-        // {
-        //     title: 'Earth Id Storage Permission',
-        //     message: 'Earth Id needs access to your storage ' +
-        //         'so you can save your photos',
-        // },
-      );
-      return granted == "granted"
-        ? true
-        : granted == "never_ask_again"
-        ? securityModalPopup()
-        : securityModalPopup();
-    } catch (err) {
-      console.error("Failed to request permission ", err);
-      return false;
-    }
   };
 
   const securityModalPopup = () => {
@@ -109,10 +106,68 @@ const Register = ({ navigation }: IHomeScreenProps) => {
     );
   };
 
+  const getBack = async () => {
+    await AsyncStorage.setItem("pageName", "");
+    navigation.goBack();
+  };
+
+  const schemaAction = async () => {
+    try {
+      const payLoad: IUserSchemaRequest = {
+        schemaName: `testschema${data.username}`,
+        description: "Membership Document for GBA Credential",
+        attributes: [
+          {
+            attributeName: data.username,
+            type: "alphanumeric",
+            description: "Username of the user",
+            required: true,
+            maxLength: "12",
+          },
+          {
+            attributeName: data.username,
+            type: "alphabet",
+            description: "First name of the user",
+            required: true,
+            maxLength: "12",
+          },
+        ],
+        expiration: {
+          value: 1,
+          unit: "years",
+        },
+        dependantSchemas: [],
+      };
+
+      dispatch(createSchema(payLoad));
+    } catch (error: any) {
+      console.log("error", error?.message);
+    }
+  };
+
+  useEffect(() => {
+    console.log("Qr==>", qrData.earthId);
+    console.log("QrNewwww==>", route);
+    schemaAction();
+  }, []);
+
+  useEffect(() => {
+    const onBackPress = () => {
+      BackHandler.exitApp();
+      return true;
+    };
+
+    BackHandler.addEventListener("hardwareBackPress", onBackPress);
+
+    return () =>
+      BackHandler.removeEventListener("hardwareBackPress", onBackPress);
+  }, []);
+
   return (
     <View style={styles.sectionContainer}>
       <ScrollView contentContainerStyle={styles.sectionContainer}>
         <Header
+          letfIconPress={() => getBack()}
           isLogoAlone={true}
           headingText={"important"}
           linearStyle={styles.linearStyle}
@@ -125,6 +180,7 @@ const Register = ({ navigation }: IHomeScreenProps) => {
             iconContainer: styles.alignCenter,
           }}
         ></Header>
+
         <View style={styles.category}>
           <View>
             <GenericText
@@ -138,20 +194,9 @@ const Register = ({ navigation }: IHomeScreenProps) => {
                 },
               ]}
             >
-              {SCREENS.BACKUPIDENTYSCREEN.instruction}
-            </GenericText>
-            <GenericText
-              style={[
-                styles.categoryHeaderText,
-                {
-                  fontSize: 14,
-                  fontWeight: "500",
-                  textAlign: "center",
-                  color: Screens.black,
-                },
-              ]}
-            >
-              {SCREENS.BACKUPIDENTYSCREEN.instructions}
+              {isEarthId()
+                ? SCREENS.BACKUPIDENTYSCREEN.instructionEarthID
+                : SCREENS.BACKUPIDENTYSCREEN.instruction}
             </GenericText>
           </View>
           <View style={{ justifyContent: "center", alignItems: "center" }}>
@@ -163,14 +208,16 @@ const Register = ({ navigation }: IHomeScreenProps) => {
               }}
               options={{ format: "jpg", quality: 0.8 }}
             >
-              <QRCode
-                getBase64={(base64: string) => {
-                  qrBase64 = base64;
-                  setBase64(base64);
-                }}
-                value={encryptedString}
-                size={250}
-              />
+              <View style={{ padding: 40, backgroundColor: "#fff" }}>
+                <QRCode
+                  getBase64={(base64: string) => {
+                    qrBase64 = base64;
+                    setBase64(base64);
+                  }}
+                  value={qrData.earthId}
+                  size={250}
+                />
+              </View>
             </ViewShot>
           </View>
           <Button
@@ -194,6 +241,11 @@ const Register = ({ navigation }: IHomeScreenProps) => {
             isLoaderVisible={isLoading}
           ></Loader>
         </View>
+        {getUserLoading && (
+          <View style={styles.loading}>
+            <ActivityIndicator color={Screens.colors.primary} size="large" />
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -203,6 +255,15 @@ const styles = StyleSheet.create({
   sectionContainer: {
     flexGrow: 1,
     backgroundColor: Screens.colors.background,
+  },
+  loading: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    alignItems: "center",
+    justifyContent: "center",
   },
   title: {
     color: Screens.grayShadeColor,

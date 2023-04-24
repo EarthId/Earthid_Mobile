@@ -2,18 +2,18 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   StyleSheet,
-  Text,
-  ScrollView,
+  Platform,
   ActivityIndicator,
   Alert,
+  Text,
+  AsyncStorage,
 } from "react-native";
 import Header from "../../../components/Header";
-import { LocalImages } from "../../../constants/imageUrlConstants";
 import { SCREENS } from "../../../constants/Labels";
 import { Screens } from "../../../themes";
 import Button from "../../../components/Button";
 import DatePicker from "react-native-date-picker";
-
+import { KeyboardAvoidingScrollView } from "react-native-keyboard-avoiding-scroll-view";
 import Info from "../../../components/Info";
 import TextInput from "../../../components/TextInput";
 import PhoneInput from "react-native-phone-number-input";
@@ -21,24 +21,20 @@ import useFormInput from "../../../hooks/use-text-input";
 import { emailValidator, nameValidator } from "../../../utils/inputValidations";
 import Loader from "../../../components/Loader";
 import {
-  GeneratedKeysAction,
   createAccount,
-  contractCall,
-  FlushData,
+  GeneratedKeysAction,
 } from "../../../redux/actions/authenticationAction";
-import { ICreateAccount } from "../../../typings/AccountCreation/ICreateAccount";
 import { useAppDispatch, useAppSelector } from "../../../hooks/hooks";
-import { IContractRequest } from "../../../typings/AccountCreation/IContractRequest";
-import {
-  encrptedEmail,
-  getDeviceId,
-  getEncrptedUserDetais,
-  getUserDetails,
-} from "../../../utils/encryption";
-import { StackActions } from "@react-navigation/native";
-import AnimatedLoader from "../../../components/Loader/AnimatedLoader";
+import { IUserAccountRequest } from "../../../typings/AccountCreation/IUserAccount";
+import { getDeviceId, getDeviceName } from "../../../utils/encryption";
 import GenericText from "../../../components/Text";
-import { alertBox } from "../../../utils/earthid_account";
+import { SnackBar } from "../../../components/SnackBar";
+import { TouchableOpacity } from "react-native-gesture-handler";
+import { isArray } from "lodash";
+import { useFetch } from "../../../hooks/use-fetch";
+import { superAdminApi } from "../../../utils/earthid_account";
+import { isEarthId } from "../../../utils/PlatFormUtils";
+import Spinner from "react-native-loading-spinner-overlay/lib";
 interface IRegister {
   navigation: any;
 }
@@ -46,13 +42,21 @@ interface IRegister {
 const Register = ({ navigation }: IRegister) => {
   const phoneInput: any = useRef();
   const dispatch = useAppDispatch();
-  const [mobileNumber, setmobileNumber] = useState();
-  const getGeneratedKeys = useAppSelector((state) => state.user);
-  const accountDetails = useAppSelector((state) => state.account);
-  const contractDetails = useAppSelector((state) => state.contract);
+  const {
+    loading: superAdminLoading,
+    data: superAdminResponse,
+    fetch: getSuperAdminApiCall,
+  } = useFetch();
+  const [mobileNumber, setmobileNumber] = useState<string>("");
+  const [loginLoading, setLoginLoading] = useState(false);
+  const userDetails = useAppSelector((state) => state.account);
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+  const keys = useAppSelector((state) => state.user);
   const [successResponse, setsuccessResponse] = useState(false);
   const [openDatePicker, setopenDatePicker] = useState<boolean>();
-
+  const [callingCode, setcallingCode] = useState<string>("1");
+  const [isValidMobileNumber, setValidMobileNumber] = useState<boolean>(false);
+  const [isMobileEmpty, setMobileEmpty] = useState<boolean>(false);
   const {
     value: firstName,
     isFocused: firstNameFocus,
@@ -64,27 +68,9 @@ const Register = ({ navigation }: IRegister) => {
     inputFocusHandler: firstNameFocusHandlur,
     inputBlurHandler: firstNameBlurHandler,
   } = useFormInput("", true, nameValidator);
-  const {
-    value: lastName,
-    isFocused: lastNameFocus,
-    validationResult: {
-      hasError: isLastNameError,
-      errorMessage: isLastNameErrorMessahe,
-    },
-    valueChangeHandler: lastNameChangeHandler,
-    inputFocusHandler: lastNameFocusHandlur,
-    inputBlurHandler: lastNameBlurHandler,
-  } = useFormInput("", true, nameValidator);
 
   const {
-    value: dateOfBirth,
-    isFocused: dateOfBirthFocus,
-    validationResult: {
-      hasError: dateOfBirthError,
-      errorMessage: dateOfBirthErrorMessage,
-    },
     valueChangeHandler: dateOfBirthChangeHandler,
-    inputFocusHandler: dateOfBirthocusHandlur,
     inputBlurHandler: dateOfBirthlurHandler,
   } = useFormInput("", true, nameValidator);
   const {
@@ -97,15 +83,35 @@ const Register = ({ navigation }: IRegister) => {
     valueChangeHandler: emailChangeHandler,
     inputFocusHandler: emailFocusHandlur,
     inputBlurHandler: emailBlurHandler,
-  } = useFormInput("", true, emailValidator);
+  } = useFormInput("", false, emailValidator);
+
+  useEffect(() => {
+    getSuperAdminApiCall(superAdminApi, {}, "GET");
+  }, []);
+
+  useEffect(()=>{
+  getItem()
+  },[])
+
+  const getItem=async()=>{
+    const item =await  AsyncStorage.getItem("flow");
+    if(item=='documentflow'){
+      const name =await  AsyncStorage.getItem("userDetails");
+      firstNameChangeHandler(name)
+    }
+  }
 
   const _navigateAction = () => {
+    setKeyboardVisible(false);
+    mobileNumber === "" ? setMobileEmpty(true) : null;
+    console.log('isValid()',isValid())
     if (isValid()) {
+      setLoginLoading(true);
       dispatch(GeneratedKeysAction());
     } else {
       console.log("its coming");
       firstNameBlurHandler();
-      lastNameBlurHandler();
+
       emailBlurHandler();
       dateOfBirthlurHandler();
     }
@@ -113,68 +119,176 @@ const Register = ({ navigation }: IRegister) => {
   const isValid = () => {
     if (
       !nameValidator(firstName, true).hasError &&
-      !nameValidator(lastName, true).hasError &&
-      !nameValidator(dateOfBirth, true).hasError &&
-      !emailValidator(email, true).hasError
+      !emailValidator(email, true).hasError &&
+      mobileNumber !== "" && mobileNumber.length === 10 &&
+      isValidMobileNumber
     ) {
       return true;
     }
     return false;
   };
 
-  const onDatePickerOpen = () => {
-    setopenDatePicker(true);
+  const _registerAction = async ({ publicKey }: any) => {
+    const token = await getDeviceId();
+    const deviceName = await getDeviceName();
+    if (superAdminResponse && superAdminResponse[0]?.Id) {
+      const payLoad: IUserAccountRequest = {
+        username: firstName,
+        deviceID: token + Math.random(),
+        deviceIMEI: token,
+        deviceName: deviceName,
+        email: email,
+        orgId: superAdminResponse[0]?.Id,
+        phone: mobileNumber,
+        countryCode: "+" + callingCode,
+        publicKey,
+        deviceOS: Platform.OS === "android" ? "android" : "ios",
+      };
+
+      dispatch(createAccount(payLoad)).then(async() => {
+        await  AsyncStorage.setItem("flow","loginflow");
+      
+      });
+    } else {
+
+      SnackBar({
+        indicationMessage: "Registered Id is not generated ,please try again",
+        doRetry: getSuperAdminApiCall(superAdminApi, {}, "GET"),
+      });
+    }
   };
-  if (getGeneratedKeys && getGeneratedKeys?.isGeneratedKeySuccess) {
-    getGeneratedKeys.isGeneratedKeySuccess = false;
-    const deviceId = getDeviceId();
-    console.log("its coming inside");
-    let payLoad: ICreateAccount = {
-      publicKeyHex: getGeneratedKeys?.responseData.publicKey,
-      versionName: "2.0",
-      deviceId: deviceId.toString(),
-      encryptedEmail: encrptedEmail(email),
-      accountStatus: "account created",
-      testnet: true,
-    };
+console.log('keys',keys)
+  if (keys && keys?.isGeneratedKeySuccess) {
+    keys.isGeneratedKeySuccess = false;
 
-    dispatch(createAccount(payLoad));
+    _registerAction(keys?.responseData?.result);
   }
-  console.log("getGeneratedKeys", getGeneratedKeys);
-  console.log("Account Details", accountDetails);
-  if (accountDetails && accountDetails?.isAccountCreatedSuccess) {
-    accountDetails.isAccountCreatedSuccess = false;
-    const encrptedUserDetails = getEncrptedUserDetais({
-      fullName: firstName + lastName,
-      mobileNumber,
-      email,
-      dateOfBirth,
-    });
-    let payLoad: IContractRequest = {
-      accountId: accountDetails?.responseData.toString().split(".")[2],
-      privateKey: getGeneratedKeys?.responseData.privateKey,
-      publicKey: getGeneratedKeys?.responseData.publicKey,
-      functionName: "createIdentity",
-      functionParams: encrptedUserDetails,
-      isViewOnly: false,
-    };
 
-    dispatch(contractCall(payLoad));
-  }
-  if (contractDetails && contractDetails?.isContractCreatedSuccessfull) {
-    contractDetails.isContractCreatedSuccessfull = false;
-    if (contractDetails?.responseData) {
-      setsuccessResponse(true);
+  if (userDetails && userDetails?.isAccountCreatedSuccess) {
+    setsuccessResponse(true);
+    userDetails.isAccountCreatedSuccess = false;
+
+    if (userDetails?.responseData) {
       setTimeout(() => {
         setsuccessResponse(false);
+       
         navigation.navigate("BackupIdentity");
       }, 3000);
     }
   }
+  if (userDetails && userDetails?.isAccountCreatedFailure) {
+    userDetails.isAccountCreatedFailure = false;
+    if (userDetails?.errorMesssage && isArray(userDetails?.errorMesssage)) {
+      SnackBar({
+        indicationMessage: userDetails?.errorMesssage[0],
+      });
+    } else {
+      console.log("userDetails?.errorMesssage", userDetails?.errorMesssage);
+     Alert.alert("Warning","Your EarthID already exists. Please recover it using your QR code generated during the registration process. If you have lost your QR code, please create a new EarthID using different username, email and phone number.")
+    }
+  }
+  const Footer = () => (
+    <View style={{ marginHorizontal: 20, backgroundColor: "#fff" }}>
+      <Button
+        onPress={_navigateAction}
+        style={{
+          buttonContainer: {
+            elevation: 5,
+          },
+          text: {
+            color: Screens.pureWhite,
+          },
+          iconStyle: {
+            tintColor: Screens.pureWhite,
+          },
+        }}
+        title={isEarthId() ? "generateeathid" : "generateglobalid"}
+      ></Button>
+      <TouchableOpacity onPress={() => navigation.goBack(null)}>
+        <View style={{ flexDirection: "row", alignSelf: "center" }}>
+          <GenericText
+            style={[
+              styles.categoryHeaderText,
+              {
+                fontSize: 13,
+                fontWeight: "500",
+                textAlign: "center",
+                color: Screens.black,
+              },
+            ]}
+          >
+            {"alreadyhavemy"}
+          </GenericText>
+          <GenericText
+            style={{
+              color: Screens.colors.primary,
+              alignSelf: "center",
+              textDecorationLine: "underline",
+            }}
+          >
+            {isEarthId() ? "EarthID" : "GlobaliD"}
+          </GenericText>
+        </View>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const onchangeFirstNameHandler = () => {
+    setKeyboardVisible(true);
+    firstNameFocusHandlur();
+  };
+  const onBlurFirstName = () => {
+    setKeyboardVisible(false);
+    firstNameBlurHandler();
+  };
+  const onchangeEmailHandler = () => {
+    setKeyboardVisible(true);
+    emailFocusHandlur();
+  };
+  const onBlurEmailName = () => {
+    setKeyboardVisible(false);
+    emailBlurHandler();
+  };
+  const onMobileNumberFocus = () => {
+    setKeyboardVisible(true);
+  };
+  const onMobileNumberBlur = () => {
+    setKeyboardVisible(false);
+  };
+  function containsSpecialChars(str: string) {
+
+    const specialChars = /^[0-9]+$/;
+    return specialChars.test(str);
+  }
+
+  const isMobileNumberValid =()=>{
+    if(isValidMobileNumber || isMobileEmpty ){
+      return false
+    }else if(phoneInput.current.isFocused){
+if(mobileNumber.length < 10){
+  console.log('its coming here')
+  return false
+}
+    }else{
+      return true
+    }
+  }
+
+  console.log('mobileNumber====?',mobileNumber.length)
+  console.log('isValidMobileNumber',isValidMobileNumber)
 
   return (
-    <View style={styles.sectionContainer}>
-      <ScrollView contentContainerStyle={styles.sectionContainer}>
+    <KeyboardAvoidingScrollView
+      style={{ paddingBottom: 1000 }}
+      stickyFooter={isKeyboardVisible && <Footer />}
+    >
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: Screens.colors.background,
+          paddingBottom: 1000,
+        }}
+      >
         <Header
           isLogoAlone={true}
           linearStyle={styles.linearStyle}
@@ -202,71 +316,38 @@ const Register = ({ navigation }: IRegister) => {
             >
               {SCREENS.LANDINGSCREEN.setUpId}
             </GenericText>
+
+            <View style={{flexDirection:"row"}}>
             <Info
-              title={"firstname"}
+              title={"username"}
               style={{
                 title: styles.title,
                 subtitle: styles.subtitle,
                 container: styles.textContainer,
               }}
             />
+
+            <GenericText 
+            style={{color:"red",position:"absolute",alignSelf:"center",left:75}}
+            >
+              {"*"}
+            </GenericText>
+            </View>
             <TextInput
               style={{
                 container: styles.textInputContainer,
               }}
+              placeholder={"Enter Username"}
               isError={isfirstNameError}
               errorText={isfirstNameErrorMessage}
-              onFocus={firstNameFocusHandlur}
-              onBlur={firstNameBlurHandler}
+              onFocus={onchangeFirstNameHandler}
+              onBlur={onBlurFirstName}
               maxLength={60}
               isFocused={firstNameFocus}
               value={firstName}
               onChangeText={firstNameChangeHandler}
             />
-            <Info
-              title={"lastname"}
-              style={{
-                title: styles.title,
-                subtitle: styles.subtitle,
-                container: styles.textContainer,
-              }}
-            />
-            <TextInput
-              style={{
-                container: styles.textInputContainer,
-              }}
-              isError={isLastNameError}
-              errorText={isLastNameErrorMessahe}
-              onFocus={lastNameFocusHandlur}
-              onBlur={lastNameBlurHandler}
-              maxLength={60}
-              isFocused={lastNameFocus}
-              value={lastName}
-              onChangeText={lastNameChangeHandler}
-            />
-            <Info
-              title={"dob"}
-              style={{
-                title: styles.title,
-                subtitle: styles.subtitle,
-                container: styles.textContainer,
-              }}
-            />
-            <TextInput
-              style={{
-                container: styles.textInputContainer,
-              }}
-              onPressRightIcon={() => onDatePickerOpen()}
-              rightIcon={LocalImages.calendarImage}
-              isError={dateOfBirthError}
-              errorText={dateOfBirthErrorMessage}
-              onFocus={dateOfBirthocusHandlur}
-              onBlur={dateOfBirthlurHandler}
-              maxLength={60}
-              isFocused={dateOfBirthFocus}
-              value={dateOfBirth}
-              onChangeText={dateOfBirthChangeHandler}
-            />
+            <View style={{flexDirection:"row"}}>
             <Info
               title={"mobileno"}
               style={{
@@ -275,33 +356,75 @@ const Register = ({ navigation }: IRegister) => {
                 container: styles.textContainer,
               }}
             />
+
+            <GenericText 
+            style={{color:"red",position:"absolute",alignSelf:"center",left:105}}
+            >
+              {"*"}
+            </GenericText>
+            </View>
+
             <PhoneInput
+            
+              textInputProps={{
+                onFocus: onMobileNumberFocus,
+                onBlur: onMobileNumberBlur,
+                allowFontScaling: false,
+                maxLength: 10,
+              }}
+              onChangeCountry={(code) => {
+                const { callingCode } = code;
+                setcallingCode(callingCode[0]);
+                console.log("code==>", callingCode[0]);
+              }}
               autoFocus={false}
+              placeholder="Mobile number"
               ref={phoneInput}
-              defaultValue={"0000000"}
-              defaultCode="IN"
+              defaultCode="US"
               layout="first"
               onChangeText={(text: any) => {
+                let validate = containsSpecialChars(text);
+                // console.log("==>formatcallingCode", text.cca2);
+                // AsyncStorage.setItem("callingcode",text.cca2)
+                // console.log("==>format", validate);
+                setValidMobileNumber(validate);
                 setmobileNumber(text);
+                setMobileEmpty(false);
               }}
               containerStyle={{
-                borderColor: Screens.darkGray,
-                width: 320,
-                borderWidth: 2.2,
-                borderRadius: 5,
-                height: 65,
-                marginLeft: 10,
+                borderColor:
+                isValidMobileNumber && mobileNumber.length === 10  
+                    ?Screens.darkGray 
+                    : mobileNumber.length != 0 ?  Screens.red:Screens.darkGray ,
+                borderWidth: isValidMobileNumber && mobileNumber.length === 10  ? 1 : mobileNumber.length != 0 ?  2.2:2,
+                borderRadius: 10,
+                height: 60,
+                marginHorizontal: 10,
               }}
-              flagButtonStyle={{ backgroundColor: Screens.thickGray }}
+              flagButtonStyle={{
+                backgroundColor: Screens.thickGray,
+                borderBottomLeftRadius: 9,
+                borderTopLeftRadius: 9,
+              }}
               textInputStyle={{ fontSize: 16, padding: 0, margin: 0 }}
               codeTextStyle={{ fontSize: 16, padding: 0, margin: 0 }}
               textContainerStyle={{
                 height: 55,
                 padding: 0,
                 margin: 0,
+                borderBottomEndRadius: 9,
+                borderTopRightRadius: 9,
+                backgroundColor: "#fff",
               }}
-              withShadow
+              filterProps={{ placeholder: "Search country" }}
             />
+            { isValidMobileNumber && mobileNumber.length === 10  ? null:
+            
+            mobileNumber.length != 0 &&  <Text allowFontScaling={false} style={styles.errorText}>
+                  {"Please enter valid mobile number"}
+                </Text>
+              }
+            <View style={{flexDirection:"row"}}>
             <Info
               title={"email"}
               style={{
@@ -310,66 +433,44 @@ const Register = ({ navigation }: IRegister) => {
                 container: styles.textContainer,
               }}
             />
+
+            <GenericText 
+            style={{color:"red",position:"absolute",alignSelf:"center",left:48}}
+            >
+              {"*"}
+            </GenericText>
+            </View>
             <TextInput
               style={{
                 container: styles.textInputContainer,
               }}
+              placeholder={"Enter your Email"}
               isError={isemailError}
               errorText={isemailErrorMessage}
-              onFocus={emailFocusHandlur}
-              onBlur={emailBlurHandler}
+              onFocus={onchangeEmailHandler}
+              onBlur={onBlurEmailName}
               maxLength={60}
               isFocused={emailFocus}
               value={email}
               onChangeText={emailChangeHandler}
             />
           </View>
-          <Button
-            onPress={_navigateAction}
-            style={{
-              buttonContainer: {
-                elevation: 5,
-              },
-              text: {
-                color: Screens.pureWhite,
-              },
-              iconStyle: {
-                tintColor: Screens.pureWhite,
-              },
-            }}
-            title={"generateeathid"}
-          ></Button>
-
-          <View style={{ flexDirection: "row", alignSelf: "center" }}>
-            <GenericText
-              style={[
-                styles.categoryHeaderText,
-                {
-                  fontSize: 13,
-                  fontWeight: "500",
-                  textAlign: "center",
-                  color: Screens.black,
-                },
-              ]}
-            >
-              {"alreadyhavemy"}
-            </GenericText>
-            <GenericText
-              style={{ color: Screens.colors.primary, alignSelf: "center" }}
-            >
-              {"Global Id"}
-            </GenericText>
-          </View>
+          {!isKeyboardVisible && <Footer />}
 
           <Loader
-            loadingText="Your Global ID is generated successfutlly."
-            Status="Success !"
+            loadingText={
+              isEarthId() ? "earthidgeneratesuccess" : "globalgeneratesuccess"
+            }
+            Status="status"
             isLoaderVisible={successResponse}
           ></Loader>
-          <AnimatedLoader
-            isLoaderVisible={accountDetails?.isLoading}
-            loadingText="loading"
-          />
+        
+            <Spinner
+              visible={userDetails?.isLoading|| keys?.isLoading}
+              textContent={"Loading..."}
+              textStyle={styles.spinnerTextStyle}
+            />
+          
         </View>
         <DatePicker
           modal
@@ -384,8 +485,8 @@ const Register = ({ navigation }: IRegister) => {
             setopenDatePicker(false);
           }}
         />
-      </ScrollView>
-    </View>
+      </View>
+    </KeyboardAvoidingScrollView>
   );
 };
 
@@ -419,8 +520,11 @@ const styles = StyleSheet.create({
     justifyContent: "flex-start",
     alignItems: "flex-start",
   },
+  spinnerTextStyle: {
+    color: "#fff",
+  },
   linearStyle: {
-    height: 250,
+    height: 400,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
     elevation: 4,
@@ -456,11 +560,11 @@ const styles = StyleSheet.create({
   category: {
     backgroundColor: Screens.pureWhite,
     padding: 10,
-    marginTop: -100,
+    marginTop: -250,
     marginHorizontal: 15,
     elevation: 5,
     borderRadius: 30,
-    flex: 0.95,
+
     justifyContent: "space-between",
   },
   loading: {
@@ -502,6 +606,12 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     marginLeft: 10,
     marginTop: -2,
+    height: 60,
+  },
+  errorText: {
+    color: Screens.red,
+    marginBottom: 10,
+    marginHorizontal: 20,
   },
 });
 

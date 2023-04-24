@@ -1,38 +1,56 @@
 import { values } from "lodash";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   StyleSheet,
-  Text,
-  FlatList,
   Image,
   TouchableOpacity,
+  Platform,
+  PermissionsAndroid,
+  Alert,
+  AsyncStorage,
 } from "react-native";
-import CircularProgress from "react-native-circular-progress-indicator";
+import DocumentPicker from "react-native-document-picker";
 import { ScrollView } from "react-native-gesture-handler";
 import Avatar from "../../components/Avatar";
 import BottomSheet from "../../components/Bottomsheet";
 import Header from "../../components/Header";
 import Info from "../../components/Info";
 import GenericText from "../../components/Text";
+
 import { LocalImages } from "../../constants/imageUrlConstants";
 import { SCREENS } from "../../constants/Labels";
-import { useAppSelector } from "../../hooks/hooks";
+import { useAppDispatch, useAppSelector } from "../../hooks/hooks";
 import { useDrawerStatus } from "@react-navigation/drawer";
 import { Screens } from "../../themes";
+import { RNCamera } from "react-native-camera";
+import DocumentMask from "../uploadDocuments/DocumentMask";
+import { useTheme } from "@react-navigation/native";
+import { savingProfilePictures } from "../../redux/actions/LocalSavingActions";
+// import { launchImageLibrary } from "react-native-image-picker";
+import * as ImagePicker from "react-native-image-picker";
+import { alertBox } from "../../utils/earthid_account";
 
 interface IHomeScreenProps {
   navigation?: any;
 }
 
 const ProfileScreen = ({ navigation }: IHomeScreenProps) => {
-  const contractDetails = useAppSelector((state) => state.contract);
+  const userDetails = useAppSelector((state) => state.account);
+  const profilePicture = useAppSelector((state) => state.savedPic);
+  const [isCamerVisible, setIsCameraVisible] = useState(false);
+  const [Response, setResponse] = useState<any>('');
+  const [pic, setPic] = useState<any>('');
 
+  const camRef: any = useRef();
+  const { colors } = useTheme();
+  const disPatch = useAppDispatch();
+  const [cameraDataUri, setcameraDataUri] = useState();
+  const [local_img, setLocal_img] = useState("");
   const isDrawerOpen = useDrawerStatus() === "open";
   if (isDrawerOpen) {
     navigation.closeDrawer();
   }
-  console.log("isDrawerOpen", isDrawerOpen);
   const [isCameraOptionVisible, setisCameraOptionVisible] =
     useState<boolean>(false);
   const _navigateAction = () => {
@@ -40,6 +58,25 @@ const ProfileScreen = ({ navigation }: IHomeScreenProps) => {
   };
   const _letfIconPress = () => {
     navigation.goBack();
+  };
+
+  const _navigateEditMobile = () => {
+    if(userDetails?.responseData?.mobileApproved){
+      navigation.navigate("EditMobileNumber");
+    }else{
+      Alert.alert('Please verify the Mobile Number first !')
+    }
+   
+  };
+
+  const _navigateEditEmail = () => {
+    if(userDetails?.responseData?.emailApproved){
+      navigation.navigate("EditEmailAddress");
+    }else{
+      Alert.alert('Please verify the email first !')
+    }
+  
+   
   };
 
   const socialMedialList = values(SCREENS.HOMESCREEN.SocialMedialList).map(
@@ -51,7 +88,7 @@ const ProfileScreen = ({ navigation }: IHomeScreenProps) => {
 
   const _renderItem = ({ item }: any) => {
     return (
-      <View style={{ paddingHorizontal: 10 }}>
+      <View style={{ paddingHorizontal: 10}}>
         <Image
           resizeMode="contain"
           style={styles.logoContainers}
@@ -61,9 +98,10 @@ const ProfileScreen = ({ navigation }: IHomeScreenProps) => {
     );
   };
 
-  const ColoumnOption = ({ icon, title }: any) => (
+  const ColoumnOption = ({ icon, title, avatarClick }: any) => (
     <View>
       <Avatar
+        avatarClick={avatarClick}
         isUploaded={false}
         iconSource={icon}
         style={{
@@ -85,10 +123,98 @@ const ProfileScreen = ({ navigation }: IHomeScreenProps) => {
     setisCameraOptionVisible(true);
   };
 
-  const emailVerifyAction = () => {
-    if (!contractDetails?.responseData?.emailApproved) {
-      navigation.navigate("OTPScreen", { type: "email" });
+  const openCamera = async () => {
+    const options = { quality: 0.1, base64: true };
+    const data = await camRef.current.takePictureAsync(options);
+    console.log("data", data);
+    if (data) {
+      AsyncStorage.setItem("profilePic",data?.uri)
+      disPatch(savingProfilePictures(data?.uri));
+      setIsCameraVisible(false);
+      setcameraDataUri(data?.uri);
     }
+  };
+  const requestPermission = async () => {
+    try {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+        {
+          title: "EarthId Storage Acess",
+          message: "EarthId needs access to your storage ",
+          buttonNeutral: "Ask Me Later",
+          buttonNegative: "Cancel",
+          buttonPositive: "OK",
+        }
+      );
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  const openFilePicker = async () => {
+    if (Platform.OS == "android") {
+      await requestPermission();
+    }
+    try {
+      ImagePicker.launchImageLibrary(
+        ImagePicker.ImageLibraryOptions,
+        setResponse
+      )
+
+      // const resp: any = await DocumentPicker.pick({
+      //   type: [DocumentPicker.types.allFiles],
+      // });
+
+      //  let fileUri = resp[0].uri;
+      //   disPatch(savingProfilePictures(fileUri));
+      //   setIsCameraVisible(false);
+      //    setcameraDataUri(fileUri);
+    } catch (err) {
+      console.log("data==>", err);
+    }
+  };
+
+  useEffect(()=>{
+    getImage()
+  },[])
+
+
+  const getImage= async ()=>{
+    const profilePic = await AsyncStorage.getItem("profilePic")
+    console.log('profilePic',profilePic)
+    setcameraDataUri(profilePic);
+    disPatch(savingProfilePictures(profilePic));
+  }
+
+
+  useEffect(() => {
+ 
+    if(Response && Response?.assets){
+      console.log('Response==>sddwsdxsw',Response)
+      saveImage()
+    }
+  }, [Response]);
+
+    const saveImage = async() =>{
+      if(Response?.assets?.length>0){
+        console.log('ImageResult==>',Response?.assets[0]?.uri)
+        let fileUri = Response?.assets[0]?.uri;
+              disPatch(savingProfilePictures(fileUri));
+        setIsCameraVisible(false);
+        setcameraDataUri(fileUri);
+        await AsyncStorage.setItem("profilePic",fileUri)
+  
+    
+      }
+    }
+
+
+  const mobileVerifyAction = () => {
+    navigation.navigate("OTPScreen", { type: "phone" });
+  };
+
+  const emailVerifyAction = () => {
+    navigation.navigate("OTPScreen", { type: "email" });
   };
 
   const navigateToCustomizedControl = () => {
@@ -99,185 +225,269 @@ const ProfileScreen = ({ navigation }: IHomeScreenProps) => {
   }, []);
   return (
     <View style={styles.sectionContainer}>
-      <ScrollView contentContainerStyle={styles.sectionContainer}>
-        <Header
-          actionIcon={LocalImages.editImage}
-          avatarClick={_avatarClick}
-          absoluteCircleInnerImage={LocalImages.cameraImage}
-          isProfileAvatar={true}
-          isUploaded={true}
-          letfIconPress={_letfIconPress}
-          rewardPoints={"50"}
-          leftIconSource={LocalImages.backImage}
-          rightIconSource={LocalImages.giftBoxImage}
-          isAvatar
-          onpress={_navigateAction}
-          linearStyle={styles.linearStyle}
-          containerStyle={{
-            iconStyle: {
-              width: 15,
-              height: 15,
-            },
-            iconContainer: styles.alignCenter,
-          }}
-        ></Header>
-        <View style={styles.flatPanel}>
-          <View style={styles.alignCenter}>
-            <Text style={[styles.label, { fontSize: 12 }]}>
-              {SCREENS.HOMESCREEN.appName}
-            </Text>
-            <Text style={[styles.label, { fontSize: 16 }]}>
-              {contractDetails?.responseData?.earthId}
-            </Text>
-          </View>
-          <CircularProgress
-            value={60}
-            radius={30}
-            activeStrokeWidth={5}
-            activeStrokeColor={Screens.colors.primary}
-          />
-        </View>
-        <View style={styles.category}>
-          <Info
-            title={"fullname"}
-            subtitle={contractDetails?.responseData?.name}
-            style={{
-              title: styles.title,
-              subtitle: styles.subtitle,
-              container: styles.textContainer,
-            }}
-          />
-          <Info
-            title={"dob"}
-            subtitle={"22/02/1995"}
-            style={{
-              title: styles.title,
-              subtitle: styles.subtitle,
-              container: styles.textContainer,
-            }}
-          />
-          <Info
-            title={"mobileno"}
-            subtitle={contractDetails?.responseData?.mobile}
-            subtitleRowText={
-              contractDetails?.responseData?.mobileApproved
-                ? "verified"
-                : "verify"
-            }
-            style={{
-              title: styles.title,
-              subtitle: styles.subtitle,
-              container: styles.textContainer,
-              subtitleNearText: [
-                styles.subtitleNearText,
-                {
-                  color: contractDetails?.responseData?.mobileApproved
-                    ? Screens.success
-                    : "red",
-                },
-              ],
-            }}
-          />
-          <Info
-            subTitlePress={emailVerifyAction}
-            title={"email"}
-            subtitle={contractDetails?.responseData?.email}
-            subtitleRowText={
-              contractDetails?.responseData?.emailApproved
-                ? "verified"
-                : "verify"
-            }
-            style={{
-              title: styles.title,
-              subtitle: styles.subtitle,
-              container: styles.textContainer,
-              subtitleNearText: [
-                styles.subtitleNearText,
-                {
-                  color: contractDetails?.responseData?.emailApproved
-                    ? Screens.success
-                    : "red",
-                },
-              ],
-            }}
-          />
-        </View>
-        <View style={styles.socialMediaContainer}>
-          <FlatList<any>
-            horizontal
-            scrollEnabled={false}
-            data={socialMedialList}
-            renderItem={_renderItem}
-            keyExtractor={_keyExtractor}
-          />
-        </View>
-        <BottomSheet
-          onClose={() => setisCameraOptionVisible(false)}
-          height={150}
-          isVisible={isCameraOptionVisible}
-        >
+      {isCamerVisible ? (
+        <View style={{ flex: 1 }}>
           <View
-            style={{
-              height: 100,
-              width: "100%",
-              paddingHorizontal: 50,
-              flexDirection: "row",
-              justifyContent: "space-around",
-            }}
+            style={{ position: "absolute", top: 20, right: 20, zIndex: 100 }}
           >
-            <ColoumnOption
-              title={"removephone"}
-              icon={LocalImages.deleteImage}
-            />
-            <ColoumnOption title={"camera"} icon={LocalImages.cameraImage} />
-            <ColoumnOption title={"gallery"} icon={LocalImages.galleryImage} />
+            <TouchableOpacity onPress={() => setIsCameraVisible(false)}>
+              <Image
+                resizeMode="contain"
+                style={[[styles.logoContainer, { tintColor: "#fff" }]]}
+                source={LocalImages.closeImage}
+              ></Image>
+            </TouchableOpacity>
           </View>
-        </BottomSheet>
-        <TouchableOpacity onPress={() => navigateToCustomizedControl()}>
-          <View
-            style={{
-              justifyContent: "center",
-              alignItems: "center",
-              marginVertical: 20,
-              flexDirection: "row",
-            }}
+          <RNCamera
+            ref={camRef}
+            style={styles.preview}
+            androidCameraPermissionOptions={null}
+            type={RNCamera.Constants.Type.front}
+            captureAudio={false}
           >
-            <Image
-              resizeMode="contain"
-              style={[styles.logoContainer]}
-              source={LocalImages.qrcodeImage}
-            ></Image>
-            <GenericText
-              style={[
-                styles.label,
-                {
-                  fontSize: 14,
-                  paddingHorizontal: 10,
-                  color: Screens.colors.primary,
-                  textDecorationLine: "underline",
-                },
-              ]}
+            <DocumentMask />
+          </RNCamera>
+          <View style={{ backgroundColor: "#000" }}>
+            <View
+              style={{
+                width: 60,
+                height: 60,
+                borderRadius: 30,
+                backgroundColor: colors.primary,
+                alignSelf: "center",
+                justifyContent: "center",
+                alignItems: "center",
+              }}
             >
-              {"customizeqrcode"}
-            </GenericText>
+              <TouchableOpacity onPress={() => openCamera()}>
+                <View
+                  style={{
+                    width: 50,
+                    height: 50,
+                    borderColor: "#fff",
+                    borderWidth: 1,
+                    borderRadius: 25,
+                    backgroundColor: "transparent",
+                  }}
+                ></View>
+              </TouchableOpacity>
+            </View>
           </View>
-        </TouchableOpacity>
-      </ScrollView>
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={styles.sectionContainer}>
+          <Header
+            picUri={local_img == "" ? profilePicture?.profileData : local_img}
+            actionIcon={LocalImages.editImage}
+            avatarClick={_avatarClick}
+            absoluteCircleInnerImage={LocalImages.cam}
+            isProfileAvatar={true}
+            isUploaded={true}
+            isBack
+            letfIconPress={_letfIconPress}
+            // rewardPoints={"50"}
+            // // leftIconSource={LocalImages.backImage}
+            // rightIconSource={LocalImages.giftBoxImage}
+            isAvatar
+            onpress={_navigateAction}
+            linearStyle={styles.linearStyle}
+            containerStyle={{
+              iconStyle: {
+                width: 15,
+                height: 15,
+              },
+              iconContainer: styles.alignCenter,
+            }}
+          ></Header>
+          <View style={styles.flatPanel}>
+            <View style={styles.alignCenter}>
+              <GenericText style={[styles.label, { fontSize: 12 }]}>
+                {SCREENS.HOMESCREEN.appName}
+              </GenericText>
+              <GenericText style={[styles.label, { fontSize: 16 }]}>
+                {userDetails?.responseData?.earthId}
+              </GenericText>
+            </View>
+            {/* <CircularProgress
+              value={60}
+              radius={30}
+              activeStrokeWidth={5}
+              activeStrokeColor={Screens.colors.primary}
+            /> */}
+          </View>
+          <View style={styles.category}>
+            <Info
+              title={"username"}
+              subtitle={userDetails?.responseData?.username}
+              style={{
+                title: styles.title,
+                subtitle: styles.subtitle,
+                container: styles.textContainer,
+              }}
+            />
+
+            <Info
+           //   tailIcondisabled={userDetails?.responseData?.mobileApproved ? 0.2 : 0.9}
+              tailIconPress={ _navigateEditMobile}
+              tailIcon={LocalImages.editIcon}
+              subTitlePress={
+                userDetails?.responseData?.mobileApproved
+                  ? null
+                  : mobileVerifyAction
+              }
+              title={"mobileno"}
+              subtitle={
+                userDetails?.responseData?.countryCode +
+                " " +
+                userDetails?.responseData?.phone
+              }
+              subtitleRowText={
+                userDetails?.responseData?.mobileApproved
+                  ? "verified"
+                  : "verify"
+              }
+              style={{
+                title: styles.title,
+                subtitle: styles.subtitle,
+                container: styles.textContainer,
+                subtitleNearText: [
+                  styles.subtitleNearText,
+                  {
+                    color: userDetails?.responseData?.mobileApproved
+                      ? Screens.success
+                      : "red",
+                  },
+                ],
+              }}
+            />
+            <Info
+              // tailIcondisabled={userDetails?.responseData?.emailApproved ? 0.2 : 0.9}
+              tailIconPress={ ()=> _navigateEditEmail() }
+              tailIcon={LocalImages.editIcon}
+              subTitlePress={
+                userDetails?.responseData?.emailApproved
+                  ? null
+                  : emailVerifyAction
+              }
+              title={"email"}
+              subtitle={userDetails?.responseData?.email}
+              subtitleRowText={
+                userDetails?.responseData?.emailApproved ? "verified" : "verify"
+              }
+              style={{
+                title: styles.title,
+                subtitle: styles.subtitle,
+                container: styles.textContainer,
+                subtitleNearText: [
+                  styles.subtitleNearText,
+                  {
+                    color: userDetails?.responseData?.emailApproved
+                      ? Screens.success
+                      : "red",
+                  },
+                ],
+              }}
+            />
+          </View>
+          {/* <View style={styles.socialMediaContainer}>
+            <FlatList<any>
+              horizontal
+              scrollEnabled={false}
+              data={socialMedialList}
+              renderItem={_renderItem}
+              keyExtractor={_keyExtractor}
+            />
+          </View> */}
+          <BottomSheet
+            onClose={() => setisCameraOptionVisible(false)}
+            height={150}
+            isVisible={isCameraOptionVisible}
+          >
+            <View
+              style={{
+                height: 100,
+                width: "100%",
+                paddingHorizontal: 50,
+                flexDirection: "row",
+                justifyContent: "space-around",
+              }}
+            >
+              <ColoumnOption
+                avatarClick={async() => {
+                  setisCameraOptionVisible(false);
+                  disPatch(savingProfilePictures(undefined));
+                 await AsyncStorage.removeItem("profilePic")
+                }}
+                title={"removephone"}
+                icon={LocalImages.deleteImage}
+              />
+
+              <ColoumnOption
+                avatarClick={() => {
+                  setisCameraOptionVisible(false);
+                  setIsCameraVisible(true);
+                }}
+                title={"camera"}
+                icon={LocalImages.cameraImage}
+              />
+
+              <ColoumnOption
+                avatarClick={() => {
+                
+                  openFilePicker();
+                  setisCameraOptionVisible(false)
+                }}
+                title={"gallery"}
+                icon={LocalImages.galleryImage}
+              />
+            </View>
+          </BottomSheet>
+          <TouchableOpacity onPress={() => navigateToCustomizedControl()}>
+            <View
+              style={{
+                justifyContent: "center",
+                alignItems: "center",
+                marginVertical: 20,
+                flexDirection: "row",
+              }}
+            >
+              <Image
+                resizeMode="contain"
+                style={[styles.logoContainer]}
+                source={LocalImages.qrcodeImage}
+              ></Image>
+              <GenericText
+                style={[
+                  styles.label,
+                  {
+                    fontSize: 14,
+                    paddingHorizontal: 10,
+                    color: Screens.colors.primary,
+                    textDecorationLine: "underline",
+                  },
+                ]}
+              >
+                {"customizeqrcode"}
+              </GenericText>
+            </View>
+          </TouchableOpacity>
+        </ScrollView>
+      )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   sectionContainer: {
-    flex: 1,
+    flexGrow: 1,
     backgroundColor: Screens.colors.background,
   },
   title: {
     color: Screens.grayShadeColor,
   },
   logoContainer: {
-    width: 30,
-    height: 30,
+    width: 15,
+    height: 15,
     tintColor: Screens.colors.primary,
   },
   subtitle: {
@@ -323,6 +533,13 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 20,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   logoContainers: {
     width: 30,
@@ -334,7 +551,6 @@ const styles = StyleSheet.create({
     color: Screens.black,
   },
   category: {
-    flex: 1,
     backgroundColor: Screens.pureWhite,
     padding: 10,
     marginVertical: 20,
@@ -365,6 +581,9 @@ const styles = StyleSheet.create({
     title: {
       color: Screens.grayShadeColor,
     },
+  },
+  preview: {
+    flex: 1,
   },
   documentContainer: {
     borderColor: Screens.colors.primary,

@@ -1,31 +1,57 @@
-import { getCall, postCall } from "../../utils/service";
+import {
+  getCall,
+  getCallWithHeader,
+  postCall,
+  ssiGetCall,
+  ssiPostCall,
+} from "../../utils/service";
 import { ACTION_TYPES } from "./types";
 import { URI } from "../../constants/URLContstants";
-import { ICreateAccount } from "../../typings/AccountCreation/ICreateAccount";
 import { SnackBar } from "../../components/SnackBar";
-import { getUserDetails } from "../../utils/encryption";
+import { IUserAccountRequest } from "../../typings/AccountCreation/IUserAccount";
+import { IUserSchemaRequest } from "../../typings/AccountCreation/IUserSchema";
 const {
   ACCOUNT: {
     CREATE_ACCOUNT: createAccountUrl,
     GENERATE_KEYS: generateKeyUrl,
-    CONTRACT_CALL: contractUrl,
+    APPROVE_EMAIL_OTP: approveOTPEmail,
+    APPROVE_PHONE_OTP: approvePhoneOtp,
+    GET_HISTORY: get_History,
+    GET_USERDID: getUser_did,
+    GENERATE_KEYS:generateKeys
   },
 } = URI;
+
+let createSchemaUrl = "https://ssi-gbg.myearth.id/api/issuer/createSchema";
 
 export const GeneratedKeysAction =
   () =>
   async (dispatch: any): Promise<any> => {
-    let responseData;
+    let responseData, responseDataSSI;
     try {
       dispatch({
         type: ACTION_TYPES.GENERATED_KEYS_LOADING,
       });
-      const response = await getCall(generateKeyUrl);
+      const response = await getCallWithHeader(
+        "https://api-stage.myearth.id/contract/generateKeys"
+      );
       responseData = await _responseHandler(response);
+      console.log("reuesturl===>", getUser_did);
+      console.log("reuestparams===>", responseData);
+      const responsedataSSI = await ssiGetCall(
+        getUser_did,
+        "GET",
+        responseData?.result?.publicKey
+      );
+      responseDataSSI = await _responseHandler(responsedataSSI);
+      console.log("responseDatassi==>", responseDataSSI);
+      const data = {
+        userDid: responseDataSSI.data,
+      };
       dispatch({
         type: ACTION_TYPES.GENERATED_KEYS_RESPONSE,
         payload: {
-          responseData,
+          responseData: { ...responseData, ...data },
         },
       });
     } catch (error) {
@@ -41,7 +67,7 @@ export const GeneratedKeysAction =
   };
 
 export const createAccount =
-  (requestPayload: ICreateAccount) =>
+  (requestPayload: IUserAccountRequest) =>
   async (dispatch: any): Promise<any> => {
     let responseData;
     try {
@@ -49,78 +75,143 @@ export const createAccount =
         type: ACTION_TYPES.CREATEDACCOUNT,
       });
       const response = await postCall(createAccountUrl, requestPayload);
+
       responseData = await _responseHandler(response);
+      console.log("responseData", responseData);
       dispatch({
         type: ACTION_TYPES.CREATED_ACCOUNT_RESPONSE,
         payload: {
           responseData,
           isLoading: false,
+          errorMesssage: "",
         },
       });
-    } catch (error) {
+    } catch (error: any) {
       console.log("create account API catch ===>", error);
+
       dispatch({
         type: ACTION_TYPES.CREATED_ACCOUNT_ERROR,
-      });
-      SnackBar({
-        indicationMessage: "Internal Server Error",
+        payload: {
+          errorMesssage: error,
+          isLoading: false,
+        },
       });
     }
   };
 
-export const contractCall =
-  (requestPayload: any) =>
+export const createSchema =
+  (requestPayload: IUserSchemaRequest) =>
   async (dispatch: any): Promise<any> => {
-    let responseData, userDetails;
+    let responseData;
     try {
       dispatch({
-        type: ACTION_TYPES.CONTRACT_CALL,
+        type: ACTION_TYPES.CREATEDSCHEMA,
       });
-      const response = await postCall(contractUrl, requestPayload);
+      const response = await ssiPostCall(createSchemaUrl, requestPayload);
       responseData = await _responseHandler(response);
-      userDetails = getUserDetails(responseData);
+      console.log("responseData", responseData);
       dispatch({
-        type: ACTION_TYPES.CONTRACT_CALL_RESPONSE,
+        type: ACTION_TYPES.CREATED_SCHEMA_RESPONSE,
         payload: {
+          responseData,
           isLoading: false,
-          responseData: userDetails,
+          errorMesssage: "",
         },
       });
     } catch (error) {
+      console.log(" API catch ===>", error);
       dispatch({
-        type: ACTION_TYPES.CONTRACT_CALL_ERROR,
+        type: ACTION_TYPES.CREATED_SCHEMA_ERROR,
+        payload: {
+          errorMesssage: error,
+        },
       });
-      console.log("Contarct API catch ===>", error);
     }
   };
 
-export const approveOTP =
-  (requestPayload: any) =>
+export const  approveOTP =
+  (requestPayload: any, type: string) =>
   async (dispatch: any): Promise<any> => {
+    console.log("type", type);
     let responseData;
     try {
       dispatch({
         type: ACTION_TYPES.APPROVE_OTP,
       });
-      const response = await postCall(contractUrl, requestPayload);
-      console.log("Approve OTP response===>", response);
+      let response;
+      if (type === "phone") {
+        response = await postCall(approvePhoneOtp, requestPayload);
+        SnackBar({
+          indicationMessage: "Verify Mobile number should be verified successfully",
+        });
+      } else {
+        response = await postCall(approveOTPEmail, requestPayload);
+        SnackBar({
+          indicationMessage: "Verify Email id should be verified successfully",
+        });
+      }
+
       responseData = await _responseHandler(response);
+      console.log("responseData==>", responseData);
+
+      dispatch({
+        type: ACTION_TYPES.APPROVEOTP_RESPONSE,
+        payload: {
+          responseData,
+          errorMesssage: "",
+        },
+      });
     } catch (error) {
-      console.log("Approve OTP API===>", error);
+      console.log("error==>", error);
+      dispatch({
+        type: ACTION_TYPES.APPROVEOTP_ERROR,
+        payload: {
+          errorMesssage: error,
+        },
+      });
+      SnackBar({
+        indicationMessage: "please enter a correct OTP",
+      });
     }
-    dispatch({
-      type: ACTION_TYPES.APPROVEOTP_RESPONSE,
-      payload: {
-        isLoading: false,
-        responseData,
-      },
-    });
   };
+
+export const getHistory =
+  (requestPayload: any) =>
+  async (dispatch: any): Promise<any> => {
+    let responseData;
+    try {
+      dispatch({
+        type: ACTION_TYPES.GET_HISTORY_CALL,
+      });
+      const response = await getCall(
+        `${get_History}?userId=${requestPayload?.userId}&publicKey=${requestPayload?.publicKey}`
+      );
+      responseData = await _responseHandler(response);
+      console.log("responseData==>", responseData);
+
+      dispatch({
+        type: ACTION_TYPES.GET_HISTORY_CALL_RESPONSE,
+        payload: {
+          responseData,
+          errorMesssage: "",
+        },
+      });
+    } catch (error) {
+      console.log("error", error);
+      dispatch({
+        type: ACTION_TYPES.GET_HISTORY_CALL_ERROR,
+        payload: {
+          errorMesssage: error,
+        },
+      });
+    }
+  };
+
 export const byPassUserDetailsRedux =
   (userDetails: any) =>
   async (dispatch: any): Promise<any> => {
     dispatch({
-      type: ACTION_TYPES.CONTRACT_CALL_RESPONSE,
+      type: ACTION_TYPES.CREATED_ACCOUNT_RESPONSE,
       payload: {
         isLoading: false,
         responseData: userDetails,
@@ -140,6 +231,19 @@ export const saveDocuments =
     });
   };
 
+  export const updateDocuments =
+  (originalArrayOfDocuments:any,index: number,updatedObject:any) =>
+  async (dispatch: any): Promise<any> => {
+    originalArrayOfDocuments?.splice(index,1,updatedObject)
+    dispatch({
+      type: ACTION_TYPES.UPDATE_DOCUMENTS,
+      payload: {
+        isLoading: false,
+        responseData: originalArrayOfDocuments,
+      },
+    });
+  };
+
 export const FlushData =
   () =>
   async (dispatch: any): Promise<any> => {
@@ -149,14 +253,13 @@ export const FlushData =
   };
 
 const _responseHandler = async (response: any): Promise<any> => {
-  const responseData = await response.json();
-  return new Promise((resolve, reject) => {
-    if (responseData.code === 200) {
-      return resolve(responseData?.result);
+  return new Promise(async (resolve, reject) => {
+    if (response.status === 200 || response.status === 201) {
+      const responseData = await response.json();
+
+      return resolve(responseData);
     } else {
-      SnackBar({
-        indicationMessage: responseData?.message,
-      });
+      const responseData = await response.json();
       reject(responseData.message);
     }
   });

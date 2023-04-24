@@ -1,12 +1,19 @@
+import { isEarthId } from "../utils/PlatFormUtils";
 export const LocalImages = {
   homeImage: require("../../resources/images/user.png"),
   moreImage: require("../../resources/images/more.png"),
+  email: require("../../resources/images/mail.png"),
+  phone: require("../../resources/images/phone.png"),
   historyImage: require("../../resources/images/history.png"),
   scanImage: require("../../resources/images/scan.png"),
-  logoImage: require("../../resources/images/logo.png"),
+  logoImage: isEarthId()
+    ? require("../../resources/images/earthIdLogo.png")
+    : require("../../resources/images/logo.png"),
+  recent: require("../../resources/images/norecentactivity.png"),
   closeImage: require("../../resources/images/close.png"),
   logoutImage: require("../../resources/images/logout.png"),
   sideArrowImage: require("../../resources/images/sidearrow.png"),
+  down: require("../../resources/images/down.png"),
   giftBoxImage: require("../../resources/images/gift-box.png"),
   humbergerImage: require("../../resources/images/humburger.png"),
   avatarImage: require("../../resources/images/avatar.png"),
@@ -41,6 +48,18 @@ export const LocalImages = {
   translateImage: require("../../resources/images/translate.png"),
   facedetection: require("../../resources/images/facedetection.png"),
   fingerprint: require("../../resources/images/fingerprint.png"),
+  editIcon: require("../../resources/images/editIcon.png"),
+  backupicon: require("../../resources/images/backupicon.png"),
+  uploadqrimage: require("../../resources/images/uploadqrimage.png"),
+  cam: require("../../resources/images/cam.png"),
+  settingpic: require("../../resources/images/settingpic.png"),
+  settingimage: require("../../resources/images/settingimage.png"),
+  manualIcon: require("../../resources/images/manualIcon.png"),
+  documentpic: require("../../resources/images/documentpic.png"),
+  faceidpic: require("../../resources/images/faceidpic.png"),
+  touchidpic: require("../../resources/images/touchidpic.png"),
+  nexticon: require("../../resources/images/nexticon.png"),
+  backicon: require("../../resources/images/backicon.png"),
 
   //categories
   CATEGORIES: {
@@ -48,6 +67,8 @@ export const LocalImages = {
     educationImage: require("../../resources/images/education.png"),
     insuranceImage: require("../../resources/images/Insurence.png"),
     personalcardImage: require("../../resources/images/personalcard.png"),
+    employment: require("../../resources/images/employment.png"),
+
   },
   SOCIAL_MEDIA_: {
     facebookImage: require("../../resources/images/facebook.png"),

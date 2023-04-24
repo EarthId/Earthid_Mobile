@@ -10,30 +10,30 @@ export const ABOUT_ROUTES = {
     SCREEN: "ProfileScreen",
     COLOR: "#D7EFFB",
   },
-  HOME: {
-    CARD: "UserAgreement",
-    TITLE: SCREENS.DRAWERMENUTITLES.HOME,
-    URI: LocalImages.homeImage,
-    SCREEN: "Home",
-    COLOR: "#FFDD9B",
-  },
-  DOCUMENT: {
-    URI: LocalImages.documentsImage,
-    CARD: "MerchantAgreement",
-    TITLE: SCREENS.DRAWERMENUTITLES.DOCUMENT,
-    SCREEN: "Document",
-    COLOR: "#C5BDF6",
-  },
-  HISTORY: {
-    URI: LocalImages.historyImage,
-    CARD: "AcceptableUsePolicy",
-    TITLE: SCREENS.DRAWERMENUTITLES.HISTORY,
-    SCREEN: "History",
-    COLOR: "#F6BDE9",
-  },
+  // HOME: {
+  //   CARD: "UserAgreement",
+  //   TITLE: SCREENS.DRAWERMENUTITLES.HOME,
+  //   URI: LocalImages.homeImage,
+  //   SCREEN: "Home",
+  //   COLOR: "#FFDD9B",
+  // },
+  // DOCUMENT: {
+  //   URI: LocalImages.documentpic,
+  //   CARD: "MerchantAgreement",
+  //   TITLE: SCREENS.DRAWERMENUTITLES.DOCUMENT,
+  //   SCREEN: "Documents",
+  //   COLOR: "#C5BDF6",
+  // },
+  // HISTORY: {
+  //   URI: LocalImages.historyImage,
+  //   CARD: "AcceptableUsePolicy",
+  //   TITLE: SCREENS.DRAWERMENUTITLES.HISTORY,
+  //   SCREEN: "History",
+  //   COLOR: "#F6BDE9",
+  // },
   SETTINGS: {
     RIGHT_ICON: LocalImages.sideArrowImage,
-    URI: LocalImages.settingsImage,
+    URI: LocalImages.settingimage,
     CARD: "AcceptableUsePolicy",
     TITLE: SCREENS.DRAWERMENUTITLES.SETTING,
     SCREEN: "settings",
@@ -56,7 +56,7 @@ export const ABOUT_ROUTES = {
   },
   IDENTITY: {
     RIGHT_ICON: LocalImages.sideArrowImage,
-    URI: LocalImages.historyImage,
+    URI: LocalImages.backupicon,
     CARD: "AcceptableUsePolicy",
     TITLE: SCREENS.DRAWERMENUTITLES.BACKUP,
     SCREEN: "AuthBackupIdentity",
@@ -69,13 +69,13 @@ export const ABOUT_ROUTES = {
     SCREEN: "delete",
     COLOR: "#C5BDF6",
   },
-  LOGOUT: {
-    URI: LocalImages.logoutImage,
-    CARD: "AcceptableUsePolicy",
-    TITLE: SCREENS.DRAWERMENUTITLES.LOGOUT,
-    SCREEN: "Logout",
-    COLOR: "#F6BDE9",
-  },
+  // LOGOUT: {
+  //   URI: LocalImages.logoutImage,
+  //   CARD: "AcceptableUsePolicy",
+  //   TITLE: SCREENS.DRAWERMENUTITLES.LOGOUT,
+  //   SCREEN: "Logout",
+  //   COLOR: "#F6BDE9",
+  // },
 };
 
 export const SETTING_LIST = [

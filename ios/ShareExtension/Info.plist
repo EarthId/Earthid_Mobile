@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>HostAppBundleIdentifier</key>
+	<string>com.earthid</string>
+	<key>HostAppURLScheme</key>
+	<string>mycustomscheme://</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>New Exception Domain</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>localhost</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+			</dict>
+		</dict>
+	</dict>
+	<key>NSExtension</key>
+	<dict>
+		<key>NSExtensionAttributes</key>
+		<dict>
+			<key>NSExtensionActivationRule</key>
+			<string>
+SUBQUERY (
+    extensionItems,
+    $extensionItem,
+        SUBQUERY (
+            $extensionItem.attachments,
+            $attachment,
+            ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.adobe.pdf"
+            || ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.file-url"
+            || ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.url"
+            || ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.jpeg"
+            || ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.png"
+        ).@count == $extensionItem.attachments.@count
+).@count &gt;= 1
+</string>
+		</dict>
+		<key>NSExtensionMainStoryboard</key>
+		<string>MainInterface</string>
+		<key>NSExtensionPointIdentifier</key>
+		<string>com.apple.share-services</string>
+	</dict>
+	<key>ReactShareViewBackgroundColor</key>
+	<dict>
+		<key>Alpha</key>
+		<integer>1</integer>
+		<key>Blue</key>
+		<integer>1</integer>
+		<key>Green</key>
+		<integer>1</integer>
+		<key>Red</key>
+		<integer>1</integer>
+		<key>Transparent</key>
+		<false/>
+	</dict>
+</dict>
+</plist>

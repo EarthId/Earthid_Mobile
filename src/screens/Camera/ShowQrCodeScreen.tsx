@@ -21,6 +21,7 @@ import CameraRoll from "@react-native-community/cameraroll";
 import CryptoJS from "react-native-crypto-js";
 import { useAppSelector } from "../../hooks/hooks";
 import { AES_ENCRYPTION_SALT } from "../../utils/earthid_account";
+import GenericText from "../../components/Text";
 
 const CameraScreen = (props: any) => {
   const _handleBarCodeRead = (barCodeData: any) => {};
@@ -28,11 +29,15 @@ const CameraScreen = (props: any) => {
   const getGeneratedKeys = useAppSelector((state) => state.user);
   const accountDetails = useAppSelector((state) => state.account);
   const viewShot: any = useRef();
-
+ const username=accountDetails?.responseData?.username;
+ const earthId= accountDetails?.responseData?.earthId;
   let qrData = {
     accountId: accountDetails?.responseData.toString().split(".")[2],
-    passPhrase: getGeneratedKeys?.responseData.mnemonics,
+    // passPhrase: getGeneratedKeys?.responseData.mnemonics,
   };
+
+  console.log('accID',accountDetails?.responseData?.username)
+ 
   var encryptedString: any = CryptoJS.AES.encrypt(
     JSON.stringify(qrData),
     AES_ENCRYPTION_SALT
@@ -134,7 +139,7 @@ const CameraScreen = (props: any) => {
       </View>
       <View style={styles.category}>
         <View style={{ flex: 0.8, justifyContent: "space-between" }}>
-          <Text
+          <GenericText
             style={[
               styles.categoryHeaderText,
               {
@@ -145,9 +150,9 @@ const CameraScreen = (props: any) => {
               },
             ]}
           >
-            {"Robert Downey"}
-          </Text>
-          <Text
+            {username}
+          </GenericText>
+          <GenericText
             style={[
               styles.categoryHeaderText,
               {
@@ -158,8 +163,8 @@ const CameraScreen = (props: any) => {
               },
             ]}
           >
-            {"ID: 37578810"}
-          </Text>
+            {"ID: "+earthId}
+          </GenericText>
 
           <View style={{ justifyContent: "center", alignItems: "center" }}>
             <ViewShot
@@ -180,7 +185,7 @@ const CameraScreen = (props: any) => {
               />
             </ViewShot>
           </View>
-          <Text
+          <GenericText
             style={[
               styles.categoryHeaderText,
               {
@@ -192,8 +197,8 @@ const CameraScreen = (props: any) => {
             ]}
           >
             {"Share this code"}
-          </Text>
-          <Text
+          </GenericText>
+          {/* <Text
             style={[
               styles.categoryHeaderText,
               {
@@ -205,7 +210,7 @@ const CameraScreen = (props: any) => {
             ]}
           >
             {SCREENS.SHOWQRSCREEN.instruction}
-          </Text>
+          </Text> */}
         </View>
         <Button
           onPress={capturePicture}

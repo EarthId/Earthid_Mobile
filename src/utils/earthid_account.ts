@@ -1,17 +1,23 @@
 import { Platform, Alert } from "react-native";
 import CryptoJS from "react-native-crypto-js";
-
+import { EARTHID_DEV_BASE } from "../constants/URLContstants";
 export const isTestnet = true;
-const BASE_URL =
-  isTestnet === true
-    ? "https://api-stage.myearth.id"
-    : // ? "http://192.168.0.108:3069" // already available
-      // ? "http://192.168.7.27:3069" // my local IP
-      // ? "http://15.207.193.210:3069" // new base url
-      "https://api.myearth.id";
-console.log("BASE_URL -->", BASE_URL);
-export const api = BASE_URL + "/otp/sendOTP";
-export const changeContactApi = BASE_URL + "/otp/sendOTPChangeRequest";
+export const BASE_URL = EARTHID_DEV_BASE;
+
+export const api = BASE_URL + "/verification/sendEmailOTP";
+export const superAdminApi = BASE_URL + "/admin/getSuperAdmin";
+export const phoneOtp = BASE_URL + "/verification/sendPhoneOTP";
+export const updatephoneOtp = BASE_URL + "/verification/sendVerifiedPhoneOTP";
+export const updateEmailOtp = BASE_URL + "/verification/sendVerifiedEmailOTP";
+export const updateEmail = BASE_URL + "/verification/verifiedEmailVerify";
+export const getCategoriesApi = BASE_URL + "/user/getCategories";
+export const facialDataLivenessAPI = BASE_URL + "/user/liveness";
+export const CreateHistory = BASE_URL + "/history/createHistory";
+export const updatePhone = BASE_URL + "/verification/verifiedPhoneVerify";
+export const QrcodeApis = BASE_URL + "/customer/shareDoc";
+export const generateCredientials = `https://ssi-gbg.myearth.id/api/issuer/schemas`;
+export const CreateVarifiableCredientails = `https://ssi-gbg.myearth.id/api/issuer/verifiableCredential`;
+
 export const createAccountApi = BASE_URL + "/authorize/createAccount";
 export const getRecordByTxApi = BASE_URL + "/authorize/getRecordByTx?txId";
 export const cryptoTransferApi = BASE_URL + "/authorize/cryptoTransfer";
@@ -27,6 +33,11 @@ export const generateUserDid = "https://ssi-gbg.myearth.id/api/user/did";
 export const generateIssuerDid = "https://ssi-gbg.myearth.id/api/issuer/did";
 export const generateCryptograph = BASE_URL + "/tech5/cryptoEncode";
 export const apiAuthorization = "fae2622d-7b73-4fc6-a536-202cabe75187";
+export const deleteUserApi = BASE_URL + "/user/deleteUser";
+export const uploadDocument = BASE_URL + "/user/upload";
+export const uploadRegisterDocument = "https://stage-apiv2.myearth.id/user/upload";
+
+
 // icca api to post specific data
 export const iccaPostApi = "https://icca.flexsin.org/api/user_key_data";
 // verifier website url for verifying the shared link
@@ -35,8 +46,7 @@ export const verifierWebsite = "https://verifier.icca.flexsin.org/";
 //firebaseAnalytics
 
 //Scan QR always on mainnet only
-export const serviceProviderApi =
-  "https://api-stage.myearth.id/authorize/serviceProvider/";
+export const serviceProviderApi = `${BASE_URL}/customer/serviceProvider`;
 export const userDataApi = "https://api-stage.myearth.id/authorize/userData/";
 
 // Last Mainnet - 0.0.43407
@@ -885,12 +895,12 @@ export const errorStrings = [
   "Email and Mobile both are already verified!",
   "Invalid OTP type!",
   "You are not authorized, please use owner account!",
-  "EarthId does not exists with this wallet!",
+  "EarthID does not exists with this wallet!",
   "You are not authorized!",
   "Account already exists with this wallet!",
-  "EarthId already exists with this email!",
-  "EarthId already exists with this mobile number!",
-  "EarthId already exists with this deviceId!",
+  "EarthID already exists with this email!",
+  "EarthID already exists with this mobile number!",
+  "EarthID already exists with this deviceId!",
 ];
 
 export const decryptQRCode = (

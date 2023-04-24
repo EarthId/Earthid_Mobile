@@ -1,5 +1,11 @@
-import React, { useState } from "react";
-import { View, StyleSheet, FlatList } from "react-native";
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  Image,
+} from "react-native";
 import ToggleSwitch from "toggle-switch-react-native";
 import Header from "../../components/Header";
 import GenericText from "../../components/Text";
@@ -8,22 +14,30 @@ import { SCREENS } from "../../constants/Labels";
 import { useAppDispatch, useAppSelector } from "../../hooks/hooks";
 import { savingCustomQrData } from "../../redux/actions/LocalSavingActions";
 import { Screens } from "../../themes";
+import { useDrawerStatus } from "@react-navigation/drawer";
 
 interface IDocumentScreenProps {
   navigation?: any;
 }
 
 const CustomizeQr = ({ navigation }: IDocumentScreenProps) => {
-  const qrListData = useAppSelector((state) => state.saveData);
+  const qrListData = useAppSelector((state :any) => state.saveData);
+  const userDetails = useAppSelector((state) => state.account);
   var ctList = SCREENS.HOMESCREEN.CategoryCustomiseList;
-  console.log("documentsDetailsList", qrListData);
   if (qrListData && qrListData?.qrListData && qrListData?.qrListData) {
     ctList = qrListData?.qrListData;
   }
 
   const dispatch = useAppDispatch();
+
+
+  useEffect(()=>{
+    console.log("Details==>", userDetails);
+  },[])
+
   const _toggleDrawer = () => {
     navigation.openDrawer();
+    console.log("drawer==>", "ooo");
   };
 
   let documentsDetailsList = useAppSelector((state) => state.Documents);
@@ -68,7 +82,13 @@ const CustomizeQr = ({ navigation }: IDocumentScreenProps) => {
         <View>
           <GenericText style={[{ fontSize: 13 }]}>{item.TITLE}</GenericText>
           <GenericText style={[{ fontSize: 15, fontWeight: "900" }]}>
-            {item.DOMAIN}
+            {item.DOMAIN == "mobile"
+              ? userDetails?.responseData?.phone
+              : item.DOMAIN == "name"
+              ? userDetails?.responseData?.username
+              : item.DOMAIN == "email"
+              ? userDetails?.responseData?.email
+              : item.DOMAIN}
           </GenericText>
         </View>
         <View>
@@ -92,13 +112,26 @@ const CustomizeQr = ({ navigation }: IDocumentScreenProps) => {
   return (
     <View style={styles.sectionContainer}>
       <Header
-        rightIconPress={onPressNavigateTo}
-        leftIconSource={LocalImages.logoImage}
-        onpress={() => {
-          _toggleDrawer();
-        }}
+        headingText="customizeqrcode"
+        letfIconPress={() => navigation.goBack()}
         linearStyle={styles.linearStyle}
+        containerStyle={{
+          iconContainer: styles.alignCenter,
+        }}
       ></Header>
+      <TouchableOpacity
+        onPress={() => navigation.goBack()}
+        style={{
+          position: "absolute",
+          marginTop: 40,
+          marginLeft: 20,
+        }}
+      >
+        <Image
+          source={LocalImages.backImage}
+          style={{ height: 20, width: 20, resizeMode: "contain" }}
+        />
+      </TouchableOpacity>
       <GenericText
         style={[styles.label, { fontSize: 14, textAlign: "center" }]}
       >
@@ -119,7 +152,7 @@ const styles = StyleSheet.create({
     backgroundColor: Screens.colors.background,
   },
   linearStyle: {
-    height: 120,
+    height: 108,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
     elevation: 4,

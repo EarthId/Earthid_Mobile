@@ -1,5 +1,5 @@
-import { useTheme } from "@react-navigation/native";
-import React, { useRef, useState } from "react";
+import { StackActions, useTheme } from "@react-navigation/native";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   StyleSheet,
@@ -14,9 +14,12 @@ import { RNCamera } from "react-native-camera";
 
 import Button from "../../components/Button";
 import { SnackBar } from "../../components/SnackBar";
+import GenericText from "../../components/Text";
 import { LocalImages } from "../../constants/imageUrlConstants";
-import { useAppSelector } from "../../hooks/hooks";
+import { useAppDispatch, useAppSelector } from "../../hooks/hooks";
+import { SaveSecurityConfiguration } from "../../redux/actions/LocalSavingActions";
 import { Screens } from "../../themes/index";
+import { ESecurityTypes } from "../../typings/enums/Security";
 import { getDeviceId } from "../../utils/encryption";
 import { SERVICE } from "../../utils/securityServices";
 import DocumentMask from "../uploadDocuments/DocumentMask";
@@ -24,7 +27,9 @@ import DocumentMask from "../uploadDocuments/DocumentMask";
 const LivenessCameraScreen = (props: any) => {
   const [maskedColor, setmaskedColor] = useState("#fff");
   const [data, setData] = useState();
-  const contractDetails = useAppSelector((state) => state.contract);
+  const dispatch = useAppDispatch();
+  const userDetails = useAppSelector((state) => state.contract);
+  const securityReducer: any = useAppSelector((state) => state.security);
   // Initial state of variables
   let rightEyeOpen: any[] = [];
   let camera: {
@@ -49,7 +54,7 @@ const LivenessCameraScreen = (props: any) => {
   const _handleBarCodeRead = async (faceArray: any) => {
     if (!faceDetected) {
       // Face Recognition algorithm
-      if (faceArray.faces.length === 1 && faceCount < 15) {
+      if (faceArray.faces.length === 1 && faceCount < 2) {
         var id = faceArray.faces[0].faceID;
         if (faceId === null) {
           faceId = id;
@@ -102,8 +107,8 @@ const LivenessCameraScreen = (props: any) => {
               base64: true,
             };
             const data = await camRef.current.takePictureAsync(options);
-
-            props.navigation.navigate("SuccessFaceRegister");
+            await AsyncStorage.setItem("FaceID", "facedata");
+            saveSelectionSecurities();
           } else {
             SnackBar({
               indicationMessage: "I can still see you moving",
@@ -118,30 +123,66 @@ const LivenessCameraScreen = (props: any) => {
     }
   };
 
-  const handleFaceDetected = async (data: { base64: any }) => {
-    const detectedFace = data.base64;
-    const deviceId = getDeviceId();
-    const requestBody = {
-      earthId: contractDetails?.responseData?.earthId,
-      deviceId: deviceId,
-      faceImage: detectedFace,
-    };
-    console.log("requestBody====>", JSON.stringify(requestBody));
-    const res = await SERVICE.REGISTER_FACE(requestBody);
-    console.log("facedata====>", res);
-    let facedata = res.data.result.faceId;
-    console.log("facedata====>", facedata);
-    AsyncStorage.setItem("facedata", facedata);
-    const test = "success";
-    AsyncStorage.setItem("setFaceid", test);
+  const saveSelectionSecurities = () => {
+    let payLoad = [];
+    if (
+      securityReducer &&
+      securityReducer?.securityData &&
+      securityReducer?.securityData?.length > 0
+    )
+      payLoad = securityReducer?.securityData;
+    if (payLoad[0].types !== ESecurityTypes.FACE) {
+      payLoad.push({
+        types: ESecurityTypes.FACE,
+        enabled: true,
+      });
+    } else {
+      payLoad = payLoad.map(
+        (item: { types: ESecurityTypes; enabled: boolean }) => {
+          if (item.types === ESecurityTypes.FACE) {
+            item.enabled = true;
+          }
+          return item;
+        }
+      );
+    }
+    dispatch(SaveSecurityConfiguration(payLoad)).then(() => {
+      actionToNavigate();
+    });
+  };
 
-    if (facedata) {
-      props.navigation.navigate("SuccessFaceRegister");
+  const actionToNavigate = () => {
+    if (securityReducer && securityReducer?.securityData) {
+      console.log(
+        "securityReducer?.securityData",
+        securityReducer?.securityData
+      );
+      if (
+        securityReducer?.securityData?.length === 2 &&
+        securityReducer?.securityData?.some(
+          (item: { types: any }) => item.types === ESecurityTypes.PASSCORD
+        ) &&
+        securityReducer?.securityData?.every(
+          (item: { enabled: boolean }) => item.enabled
+        )
+      ) {
+        props.navigation.dispatch(
+          StackActions.replace("DrawerNavigator", { type: "Faceid" })
+        );
+      } else {
+        props.navigation.navigate("Security");
+      }
+    } else {
+      props.navigation.navigate("Security");
     }
   };
 
   const { colors } = useTheme();
   const camRef: any = useRef();
+
+  useEffect(() => {
+    console.log("route==>", props.route);
+  }, []);
 
   return (
     <View style={styles.sectionContainer}>
@@ -175,7 +216,7 @@ const LivenessCameraScreen = (props: any) => {
       >
         <DocumentMask color={maskedColor} />
       </RNCamera>
-      <Text
+      <GenericText
         style={{
           textAlign: "center",
           paddingVertical: 5,
@@ -184,14 +225,17 @@ const LivenessCameraScreen = (props: any) => {
           color: "#fff",
         }}
       >
-        Capture
-      </Text>
-      <Text style={{ textAlign: "center", paddingVertical: 5, color: "#fff" }}>
-        Place your face inside the live box!
-      </Text>
-      <Button
+        {"capture"}
+      </GenericText>
+      <GenericText
+        style={{ textAlign: "center", paddingVertical: 5, color: "#fff" }}
+      >
+       {"placeurfacelivebox"}
+      </GenericText>
+      {/* <Button
         onPress={() => {
           setData(undefined);
+        //  props.navigation.goBack()
         }}
         style={{
           buttonContainer: {
@@ -206,7 +250,7 @@ const LivenessCameraScreen = (props: any) => {
           },
         }}
         title={"Retry"}
-      ></Button>
+      ></Button> */}
     </View>
   );
 };

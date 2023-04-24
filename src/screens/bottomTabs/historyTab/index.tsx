@@ -1,89 +1,274 @@
-import { values } from "lodash";
-import React from "react";
-import { View, StyleSheet, Text, FlatList, Image } from "react-native";
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  StyleSheet,
+  FlatList,
+  ScrollView,
+  Alert,
+  Text,
+  TouchableOpacity,
+  Image,
+} from "react-native";
+import { json } from "stream/consumers";
 
 import Card from "../../../components/Card";
 import Header from "../../../components/Header";
+import AnimatedLoader from "../../../components/Loader/AnimatedLoader";
 import GenericText from "../../../components/Text";
 import { LocalImages } from "../../../constants/imageUrlConstants";
 import { SCREENS } from "../../../constants/Labels";
+import { useAppDispatch, useAppSelector } from "../../../hooks/hooks";
+import { getHistory } from "../../../redux/actions/authenticationAction";
 import { Screens } from "../../../themes";
+import Avatar from "../../../components/Avatar";
+import { getColor } from "../../../utils/CommonFuntion";
 
 interface IDocumentScreenProps {
   navigation?: any;
 }
 
 const DocumentScreen = ({ navigation }: IDocumentScreenProps) => {
+  const getHistoryReducer = useAppSelector((state) => state.getHistoryReducer);
+  const userDetails = useAppSelector((state) => state.account);
+  const [selectedItem, setselectedItem] = useState();
+
+  const [
+    isBottomSheetForSideOptionVisible,
+    setisBottomSheetForSideOptionVisible,
+  ] = useState<boolean>(false);
+
+  const dispatch = useAppDispatch();
+  let documentsDetailsList = useAppSelector((state) => state.Documents);
+  let data = documentsDetailsList?.responseData;
+
   const _toggleDrawer = () => {
     navigation.openDrawer();
   };
+  if (getHistoryReducer?.isSuccess) {
+    getHistoryReducer.isSuccess = false;
+  }
 
-  const documentsDetailsList = values(
-    SCREENS.HOMESCREEN.documentsDetailsList
-  ).map(
-    ({
-      TITLE: title,
-      URI: uri,
-      COLOR: color,
-      SUBTITLE: subtitle,
-      ID: id,
-      UPLOADIMAGECOLOR: sub_color,
-    }: any) => ({
-      title,
-      uri,
-      color,
-      subtitle,
-      id,
-      sub_color,
-    })
-  );
+  console.log("----+++,", data);
 
+  //open document
+  const _rightIconOnPress = (selecteArrayItem: any) => {
+    console.log(",,,,selecteArrayItem", selecteArrayItem);
+    setselectedItem(selecteArrayItem);
+    setisBottomSheetForSideOptionVisible(true);
+  };
+
+  const getCategoryImages = (item: { categoryType: any; name: any }) => {
+    const getItems = SCREENS.HOMESCREEN.categoryList.filter(
+      (itemFiltered, index) => {
+        return (
+          itemFiltered.TITLE.toLowerCase() === item?.categoryType?.toLowerCase()
+        );
+      }
+    );
+
+    return getItems[0];
+  };
+  const getImagesColor = (item: any) => {
+    let colors = item?.documentName;
+    let iteName = colors?.trim()?.split("(")[0]?.trim();
+    return getColor(iteName);
+  };
   const _renderItem = ({ item }: any) => {
     return (
-      <Card
-        titleIcon={LocalImages.vcImage}
-        leftAvatar={item.uri}
-        absoluteCircleInnerImage={LocalImages.upImage}
-        title={item.title}
-        subtitle={item.subtitle}
-        style={{
-          ...styles.cardContainer,
-          ...{
-            avatarContainer: {
-              backgroundColor: item.color,
-              width: 60,
-              height: 60,
-              borderRadius: 20,
-              marginTop: 25,
-            },
-            uploadImageStyle: {
-              backgroundColor: item.sub_color,
-            },
-          },
-        }}
-      />
+      // <Card
+      //   leftAvatar={LocalImages.documentsImage}
+      //   absoluteCircleInnerImage={LocalImages.upImage}
+      //   //  rightIconSrc={LocalImages.menuImage}
+      //   title={item.name}
+      //   subtitle={`      Uploaded  : ${item.date}`}
+      //   style={{
+      //     ...styles.cardContainer,
+      //     ...{
+      //       avatarContainer: {
+      //         backgroundColor: "rgba(245, 188, 232, 1)",
+      //         width: 62,
+      //         height: 62,
+      //         borderRadius: 20,
+      //         marginTop: 25,
+      //         marginLeft: 10,
+      //         marginRight: 5,
+      //       },
+      //       uploadImageStyle: {
+      //         backgroundColor: "rgba(245, 188, 232, 1)",
+      //         borderRadius: 25,
+      //         borderWidth: 3,
+      //         bordercolor: "#fff",
+      //         borderWidthRadius: 25,
+      //       },
+      //     },
+      //     title: {
+      //       fontSize: 18,
+      //       marginTop: -10,
+      //       fontWeight: "bold",
+      //     },
+      //     subtitle: {
+      //       fontSize: 14,
+      //       marginTop: 5,
+      //     },
+      //   }}
+      // />
+      <TouchableOpacity
+        style={{ marginBottom: 20 }}
+        onPress={() =>
+          navigation.navigate("ViewCredential", { documentDetails: item })
+        }
+      >
+        <View style={{ flexDirection: "row", marginTop: 5 }}>
+          <View style={{ justifyContent: "center", alignItems: "center" }}>
+            <Avatar
+              isCategory={true}
+              isUploaded={false}
+              iconSource={getCategoryImages(item)?.URI}
+              style={{
+                container: [
+                  styles.avatarContainer,
+                  {
+                    backgroundColor: getCategoryImages(item)?.COLOR,
+                    flexDirection: "row",
+                  },
+                ],
+                imgContainer: styles.avatarImageContainer,
+                text: styles.avatarTextContainer,
+              }}
+            />
+          </View>
+          <View
+            style={{
+              justifyContent: "center",
+              alignItems: "center",
+              marginTop: -20,
+            }}
+          >
+            <GenericText
+              style={[
+                { fontSize: 15, fontWeight: "bold", marginHorizontal: 9 },
+              ]}
+            >
+              {item?.isVc?item.name:item?.categoryType}
+            </GenericText>
+          </View>
+        </View>
+
+        <View style={{ marginTop: -20 }}>
+          <Card
+            titleIcon={item?.isVc ? LocalImages.vcImage : null}
+            leftAvatar={LocalImages.documentsImage}
+            absoluteCircleInnerImage={LocalImages.upImage}
+            // rightIconSrc={LocalImages.menuImage}
+            rightIconOnPress={() => _rightIconOnPress(item)}
+            title={item?.isVc ?item.name : item?.docName}
+            subtitle={`      Uploaded  : ${item.date}`}
+            style={{
+              ...styles.cardContainer,
+              ...{
+                avatarContainer: {
+                  backgroundColor:item?.isVc?'#D7EFFB': getImagesColor(item),
+                  width: 60,
+                  height: 60,
+                  borderRadius: 20,
+                  marginTop: 25,
+                  marginLeft: 10,
+                  marginRight: 5,
+                },
+                uploadImageStyle: {
+                  backgroundColor:item?.isVc?'#D7EFFB': getImagesColor(item),
+                  borderRadius: 25,
+                  borderWidth: 3,
+                  bordercolor: "#fff",
+                  borderWidthRadius: 25,
+                },
+              },
+              title: {
+                fontSize: 18,
+                marginTop: -10,
+                fontWeight: "bold",
+              },
+              subtitle: {
+                fontSize: 14,
+                marginTop: 5,
+              },
+            }}
+          />
+        </View>
+      </TouchableOpacity>
     );
   };
 
   const _keyExtractor = ({ id }: any) => id.toString();
   return (
     <View style={styles.sectionContainer}>
-      <Header
-        leftIconSource={LocalImages.logoImage}
-        onpress={() => {
-          _toggleDrawer();
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          flexGrow: 1,
+          paddingBottom: 200,
+          backgroundColor: "#fff",
         }}
-        linearStyle={styles.linearStyle}
-      ></Header>
-      <GenericText style={[styles.categoryHeaderText, { fontSize: 13 }]}>
-        {SCREENS.HOMESCREEN.History}
-      </GenericText>
-      {/* <FlatList<any>
-        showsHorizontalScrollIndicator={false}
-        data={documentsDetailsList}
-        renderItem={_renderItem}
-        keyExtractor={_keyExtractor}
-      /> */}
+      >
+        {getHistoryReducer?.responseData
+          ? console.log("gettingResponse of HISTORY====>", getHistoryReducer)
+          : null}
+        <Header
+          leftIconSource={LocalImages.logoImage}
+          onpress={() => {
+            _toggleDrawer();
+          }}
+          linearStyle={styles.linearStyle}
+        ></Header>
+        <GenericText
+          style={[styles.categoryHeaderText, { fontSize: 14, marginTop: 10,color:"black" }]}
+        >
+          {SCREENS.HOMESCREEN.History}
+        </GenericText>
+
+          {
+
+          documentsDetailsList?.responseData && documentsDetailsList?.responseData?.length> 0 ? 
+
+                  <FlatList<any>
+                    showsHorizontalScrollIndicator={false}
+                    // data={
+                    //   getHistoryReducer && getHistoryReducer?.responseData
+                    //     ? getHistoryReducer.responseData
+                    //     : []
+                    // }
+                    data={data}
+                    extraData={data}
+                    renderItem={_renderItem}
+                    keyExtractor={(item) => item.id}
+                  />
+                  :
+                  //  <GenericText
+                  // style={{
+                  // color:"black",
+                  // alignSelf:"center",
+                  // marginTop:"30%",
+                  // fontSize:18
+                  // }}
+                  // >{"norecentactivity"}
+                  // </GenericText>
+
+                  <View style={{ justifyContent: "center", alignItems: "center",marginTop:"30%" }}>
+                  <Image
+                    resizeMode="contain"
+                    style={[styles.logoContainers]}
+                    source={LocalImages.recent}
+                  ></Image>
+                </View>
+
+        }
+
+       
+        <AnimatedLoader
+          isLoaderVisible={getHistoryReducer?.isLoading}
+          loadingText="loading"
+        />
+      </ScrollView>
     </View>
   );
 };
@@ -92,6 +277,11 @@ const styles = StyleSheet.create({
   sectionContainer: {
     flex: 1,
     backgroundColor: Screens.colors.background,
+  },
+  logoContainers: {
+    width: 200,
+    height: 150,
+    resizeMode: "contain",
   },
   linearStyle: {
     height: 120,
@@ -105,6 +295,10 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     backgroundColor: Screens.colors.background,
     elevation: 15,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 2,
     marginTop: -40,
     flexDirection: "row",
     justifyContent: "space-between",
@@ -132,7 +326,10 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginVertical: 10,
     elevation: 10,
-
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 2,
     alignItems: "center",
     borderRadius: 20,
     backgroundColor: Screens.pureWhite,
@@ -163,6 +360,22 @@ const styles = StyleSheet.create({
   logoContainer: {
     width: 25,
     height: 25,
+  },
+  avatarContainer: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    marginHorizontal: 8,
+  },
+  avatarImageContainer: {
+    width: 15,
+    height: 15,
+    marginTop: 5,
+    tintColor: "#fff",
+  },
+  avatarTextContainer: {
+    fontSize: 13,
+    fontWeight: "500",
   },
 });
 

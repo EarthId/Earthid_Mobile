@@ -41,7 +41,9 @@ export const BottomMenus = (propss: any) => {
                 style={[
                   styles.ImgStyle,
                   {
-                    tintColor: focused ? colors.primary : colors.background,
+                    tintColor: focused
+                      ? Screens.colors.primary
+                      : colors.background,
                   },
                 ]}
                 source={LocalImages.homeImage}
@@ -53,7 +55,13 @@ export const BottomMenus = (propss: any) => {
       <Tab.Screen
         name="Documents"
         component={DocumentScreen}
+     
+        listeners={({ navigation }) => ({
+          blur: () => navigation.setParams({ category:undefined }),
+        })}
+        initialParams={{category:undefined}}
         options={{
+          unmountOnBlur: true,
           tabBarLabelStyle: styles.tabBarLabelStyle,
           tabBarIcon: ({ focused }: any) => (
             <View
@@ -66,10 +74,12 @@ export const BottomMenus = (propss: any) => {
                 style={[
                   styles.ImgStyle,
                   {
-                    tintColor: focused ? colors.primary : colors.background,
+                    tintColor: focused
+                      ? Screens.colors.primary
+                      : colors.background,
                   },
                 ]}
-                source={LocalImages.documentsImage}
+                source={LocalImages.documentpic}
               />
             </View>
           ),
@@ -88,9 +98,9 @@ export const BottomMenus = (propss: any) => {
               <View style={styles.circle}>
                 <LinearGradients
                   horizontalGradient
-                  endColor={Screens.colors.ScanButton.endColor}
-                  middleColor={Screens.colors.ScanButton.middleColor}
-                  startColor={Screens.colors.ScanButton.startColor}
+                  endColor={"#3393e2"}
+                  middleColor={"#7036f8"}
+                  startColor={"#801ffe"}
                   style={[styles.Innercircle]}
                 >
                   <Image
@@ -123,7 +133,9 @@ export const BottomMenus = (propss: any) => {
                 style={[
                   styles.ImgStyle,
                   {
-                    tintColor: focused ? colors.primary : colors.background,
+                    tintColor: focused
+                      ? Screens.colors.primary
+                      : colors.background,
                   },
                 ]}
                 source={LocalImages.historyImage}
@@ -156,7 +168,9 @@ export const BottomMenus = (propss: any) => {
                 style={[
                   styles.ImgStyle,
                   {
-                    tintColor: focused ? colors.primary : colors.background,
+                    tintColor: focused
+                      ? Screens.colors.primary
+                      : colors.background,
                   },
                 ]}
                 source={LocalImages.moreImage}

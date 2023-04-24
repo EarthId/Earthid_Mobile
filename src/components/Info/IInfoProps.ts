@@ -5,4 +5,7 @@ export interface IInfoProps {
   titleIcon?: any;
   subtitleRowText?: string;
   subTitlePress?: any;
+  tailIcon?:any;
+  tailIconPress?:any
+  tailIcondisabled?:any
 }

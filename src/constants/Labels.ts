@@ -1,9 +1,10 @@
+import { isEarthId } from "../utils/PlatFormUtils";
 import { LocalImages } from "./imageUrlConstants";
 
 export const SCREENS = {
   HOMESCREEN: {
     avatarName: "Robert Downey",
-    appName: "Global ID",
+    appName: isEarthId() ? "EarthID" : "GlobaliD",
     category: "CATEGORIES",
     documentLabel: "useddocument",
     upload: "uploaddoc",
@@ -15,29 +16,29 @@ export const SCREENS = {
         DOMAIN: "https://yourdomain.com",
       },
       {
-        TITLE: "facebook",
+        TITLE: "Facebook",
         URI: LocalImages.SOCIAL_MEDIA_.facebookImage,
-        DOMAIN: "https://yourdomain.com",
+        DOMAIN: "https://facebook.com/username",
       },
       {
-        TITLE: "twitter",
+        TITLE: "Twitter",
         URI: LocalImages.SOCIAL_MEDIA_.twitterImage,
-        DOMAIN: "https://yourdomain.com",
+        DOMAIN: "https://twitter.com/username",
       },
       {
-        TITLE: "instagram",
+        TITLE: "Instagram",
         URI: LocalImages.SOCIAL_MEDIA_.instagramImage,
-        DOMAIN: "https://yourdomain.com",
+        DOMAIN: "https://instagram.com/username",
       },
       {
         TITLE: "LinkedIn",
         URI: LocalImages.SOCIAL_MEDIA_.linkdInImage,
-        DOMAIN: "https://yourdomain.com",
+        DOMAIN: "https://linkedin.com/username",
       },
       {
-        TITLE: "telegram",
+        TITLE: "Telegram",
         URI: LocalImages.SOCIAL_MEDIA_.telegramImage,
-        DOMAIN: "https://yourdomain.com",
+        DOMAIN: "https://telegram.com/username",
       },
     ],
     DocumentList: [
@@ -52,6 +53,7 @@ export const SCREENS = {
         COLOR: "#FFDD9B",
       },
     ],
+
     categoryList: [
       {
         TITLE: "id",
@@ -59,12 +61,7 @@ export const SCREENS = {
         COLOR: "#D7EFFB",
       },
       {
-        TITLE: "education",
-        URI: LocalImages.CATEGORIES.educationImage,
-        COLOR: "#FFDD9B",
-      },
-      {
-        TITLE: "insurance",
+        TITLE: "healthcare",
         URI: LocalImages.CATEGORIES.insuranceImage,
         COLOR: "#C5BDF6",
       },
@@ -73,77 +70,99 @@ export const SCREENS = {
         URI: LocalImages.CATEGORIES.travelImage,
         COLOR: "#F5BCE8",
       },
+      {
+        TITLE: "insurance",
+        URI: LocalImages.CATEGORIES.insuranceImage,
+        COLOR: "#A5F7B0",
+      },
+      {
+        TITLE: "education",
+        URI: LocalImages.CATEGORIES.educationImage,
+        COLOR: "#FFDD9B",
+      },
+      {
+        TITLE: "employment",
+        URI: LocalImages.CATEGORIES.employment,
+        COLOR: "#FFAFAF",
+      },
     ],
     CategoryCustomiseList: [
       {
-        TITLE: "fullname",
+        TITLE: "username",
         VALUE: "Roberty Dowry",
         URI: LocalImages.SOCIAL_MEDIA_.webImage,
-        DOMAIN: "https://yourdomain.com",
+        DOMAIN: "name",
         CHECKED: true,
       },
-      {
-        TITLE: "dob",
-        VALUE: "25/12/1965",
-        URI: LocalImages.SOCIAL_MEDIA_.webImage,
-        DOMAIN: "https://yourdomain.com",
-        CHECKED: true,
-      },
+      // {
+      //   TITLE: "dob",
+      //   VALUE: "25/12/1965",
+      //   URI: LocalImages.SOCIAL_MEDIA_.webImage,
+      //   DOMAIN: "https://yourdomain.com",
+      //   CHECKED: true,
+      // },
       {
         TITLE: "mobileno",
         VALUE: "+91 7373834595",
         URI: LocalImages.SOCIAL_MEDIA_.webImage,
-        DOMAIN: "https://yourdomain.com",
+        DOMAIN: "mobile",
         CHECKED: true,
       },
       {
         TITLE: "email",
         VALUE: "vicky@yopmail.com",
         URI: LocalImages.SOCIAL_MEDIA_.webImage,
-        DOMAIN: "https://yourdomain.com",
+        DOMAIN: "email",
         CHECKED: true,
       },
 
       {
-        TITLE: "website",
+        TITLE: "Website",
         URI: LocalImages.SOCIAL_MEDIA_.webImage,
         VALUE: "https://yourdomain.com",
         DOMAIN: "https://yourdomain.com",
         CHECKED: true,
       },
       {
-        TITLE: "facebook",
+        TITLE: "Facebook",
         URI: LocalImages.SOCIAL_MEDIA_.facebookImage,
         VALUE: "https://yourdomain.com",
-        DOMAIN: "https://yourdomain.com",
+        DOMAIN: "https://facebook.com/yourdomain",
         CHECKED: true,
       },
+      // {
+      //   TITLE: "twitter",
+      //   URI: LocalImages.SOCIAL_MEDIA_.twitterImage,
+      //   DOMAIN: "https://yourdomain.com",
+      //   VALUE: "https://twitter.com/yourdomain",
+      //   CHECKED: true,
+      // },
       {
-        TITLE: "twitter",
-        URI: LocalImages.SOCIAL_MEDIA_.twitterImage,
-        DOMAIN: "https://yourdomain.com",
-        VALUE: "https://yourdomain.com",
-        CHECKED: true,
-      },
-      {
-        TITLE: "instagram",
+        TITLE: "Instagram",
         URI: LocalImages.SOCIAL_MEDIA_.instagramImage,
         VALUE: "https://yourdomain.com",
-        DOMAIN: "https://yourdomain.com",
+        DOMAIN: "https://instagram.com/yourdoamin",
         CHECKED: true,
       },
       {
-        TITLE: "linkeid",
+        TITLE: "LinkedIn",
         URI: LocalImages.SOCIAL_MEDIA_.linkdInImage,
         VALUE: "https://yourdomain.com",
-        DOMAIN: "https://yourdomain.com",
+        DOMAIN: "https://linkedin.com/yourdomain",
         CHECKED: true,
       },
       {
-        TITLE: "telegram",
+        TITLE: "Telegram",
         URI: LocalImages.SOCIAL_MEDIA_.telegramImage,
         VALUE: "https://yourdomain.com",
-        DOMAIN: "https://yourdomain.com",
+        DOMAIN: "https://telegram.com/yourdomain",
+        CHECKED: true,
+      },
+      {
+        TITLE: "Twitter",
+        URI: LocalImages.SOCIAL_MEDIA_.twitterImage,
+        VALUE: "https://yourdomain.com",
+        DOMAIN: "https://twitter.com/yourdoamin",
         CHECKED: true,
       },
     ],
@@ -200,8 +219,8 @@ export const SCREENS = {
     ],
   },
   LANDINGSCREEN: {
-    setUpId: "Set Up Your Global ID",
-    instruction: "Setup with one of our available registration options",
+    setUpId: isEarthId() ? "landscreensetupearthId" : "landscreensetupid",
+    instruction: "landscreeninstruction",
     BUTTON_LABEL: "buttonLabel",
   },
 
@@ -210,14 +229,17 @@ export const SCREENS = {
   },
 
   BACKUPIDENTYSCREEN: {
+    instructionEarthID: "backupscreeninstructionEarthID",
     instruction: "backupscreeninstruction",
     instructions: "backupscreeninstructions",
   },
   SECURITYSCREEN: {
     instruction: "securityscreeninstruction",
     instructions: "securityscreeninstructions",
-    passcordInstruction: "securityscreeninstructions",
-    passcordInstructions: "passcodeinstruction",
+    PasscodeInstruction: "securityscreeninstructions",
+    PasscodeInstructions: isEarthId()
+      ? "passcodeinstructionEarthid"
+      : "passcodeinstruction",
     confirmInstruction: "confirminstruction",
   },
   SHOWQRSCREEN: {
@@ -227,7 +249,7 @@ export const SCREENS = {
     categories: [
       {
         title: "ID",
-        color: "#D7EFFB",
+        // color: "#D7EFFB",
       },
       {
         title: "Education",

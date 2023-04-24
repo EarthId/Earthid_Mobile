@@ -1,10 +1,10 @@
 require_relative '../node_modules/react-native/scripts/react_native_pods'
 require_relative '../node_modules/@react-native-community/cli-platform-ios/native_modules'
 
-platform :ios, '13.0'
+platform :ios, '14.2'
 install! 'cocoapods', :deterministic_uuids => false
 
-target 'earthidnew' do
+target 'EarthId' do
   config = use_native_modules!
 
   # Flags change depending on the env values.
@@ -22,7 +22,7 @@ target 'earthidnew' do
 pod 'react-native-camera', path: '../node_modules/react-native-camera', subspecs: [
   'FaceDetectorMLKit'
 ]
-
+pod 'RNShareMenu', :path => '../node_modules/react-native-share-menu'
   pod 'BVLinearGradient', :path => '../node_modules/react-native-linear-gradient'
 
   pod 'RNSVG', :path => '../node_modules/react-native-svg'
@@ -38,18 +38,22 @@ pod 'react-native-camera', path: '../node_modules/react-native-camera', subspecs
   pod 'RNFS', :path => '../node_modules/react-native-fs'
 
   pod 'RNCCheckbox', :path => '../node_modules/@react-native-community/checkbox'
-
   pod 'react-native-view-shot', :path => '../node_modules/react-native-view-shot'
-
   pod 'react-native-html-to-pdf', :path => '../node_modules/react-native-html-to-pdf'
-
   pod 'react-native-cameraroll', :path => '../node_modules/@react-native-community/cameraroll'
-
   pod 'react-native-image-base64', :path => '../node_modules/react-native-image-base64'
 
 
 
-  target 'earthidnewTests' do
+  pod 'react-native-splash-screen', :path => '../node_modules/react-native-splash-screen'
+  pod 'CodePush', :path => '../node_modules/react-native-code-push'
+
+
+
+
+  pod 'RNPDF', :path => '../node_modules/react-native-view-pdf'
+
+  target 'EarthIdTests' do
     inherit! :complete
     # Pods for testing
   end
@@ -61,7 +65,26 @@ pod 'react-native-camera', path: '../node_modules/react-native-camera', subspecs
   use_flipper!()
 
   post_install do |installer|
-    react_native_post_install(installer)
-    __apply_Xcode_12_5_M1_post_install_workaround(installer)
-  end
+      react_native_post_install(
+        installer,
+        # Set `mac_catalyst_enabled` to `true` in order to apply patches
+        # necessary for Mac Catalyst builds
+        :mac_catalyst_enabled => false
+      )
+      # NOTE: Change IPHONEOS_DEPLOYMENT_TARGET to 12.4.
+      installer.pods_project.targets.each do |target|
+        target.build_configurations.each do |config|
+           config.build_settings['APPLICATION_EXTENSION_API_ONLY'] = 'No'
+          config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '12.4'
+          config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = "arm64"
+        end
+      end
+      __apply_Xcode_12_5_M1_post_install_workaround(installer)
+    end
+end
+target 'ShareExtension' do
+  use_react_native!
+
+  pod 'RNShareMenu', :path => '../node_modules/react-native-share-menu'
+ # Manually link packages here to keep your extension bundle size minimal
 end

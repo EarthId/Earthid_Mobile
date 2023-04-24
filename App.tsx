@@ -8,17 +8,24 @@
  * @format
  */
 
-import React from "react";
-import { SafeAreaView, StyleSheet } from "react-native";
+import React, { useEffect } from "react";
+import { SafeAreaView, StyleSheet, View ,Alert} from "react-native";
 import { Provider } from "react-redux";
 import { PersistGate } from "redux-persist/lib/integration/react";
 //@ts-ignore
-import i18n from "./src/utils/i18n"; //DO NOT REMOVE - this needs to be present here or in index.js
 import LanguageContextProvider from "./src/components/LanguageContext/LanguageContextProvider";
 import RootNavigator from "./src/navigations/RootNavigator";
 import { persistor, store } from "./src/redux/store";
 import { Buffer } from "buffer";
+import { isEarthId } from "./src/utils/PlatFormUtils";
+import { Screens } from "./src/themes";
 global.Buffer = Buffer;
+type SharedItem = {
+  mimeType: string;
+  data: string;
+  extraData: any;
+};
+
 
 const App = () => {
   return (
@@ -36,7 +43,9 @@ const App = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "rgba(191, 208, 224, 0.3)",
+    backgroundColor: isEarthId()
+      ? Screens.colors.ScanButton.startColor
+      : "rgba(191, 208, 224, 0.3)",
   },
 });
 

@@ -4,21 +4,16 @@ export interface ISnackbarProps {
   actionMessage?: string;
   duration?: number;
   indicationMessage?: string;
+  doRetry?: any;
 }
 export const SnackBar = ({
-  actionMessage = "",
+  actionMessage = "Try ",
   indicationMessage = "",
-  duration = Snackbar.LENGTH_SHORT,
+  duration = 3000,
+  doRetry,
 }: ISnackbarProps) => {
   Snackbar.show({
     text: indicationMessage,
     duration: duration,
-    action: {
-      text: actionMessage,
-      textColor: Screens.pureWhite,
-      onPress: () => {
-        /* Do something. */
-      },
-    },
   });
 };

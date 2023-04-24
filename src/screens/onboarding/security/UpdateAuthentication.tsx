@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   Image,
   FlatList,
+  AsyncStorage
 } from "react-native";
 import { Screens } from "../../../themes/index";
 import { LocalImages } from "../../../constants/imageUrlConstants";
@@ -14,14 +15,39 @@ import { useAppDispatch } from "../../../hooks/hooks";
 import BottomSheet from "../../../components/Bottomsheet";
 import il8n, { getUserLanguagePreference } from "../.././../utils/i18n";
 import { AppLanguage } from "../../../typings/enums/AppLanguage";
+import { alertBox } from "../../../utils/earthid_account";
+import Header from "../../../components/Header";
 
 const UpdateAuthentication = (props: any) => {
   const dispatch = useAppDispatch();
   const [languageVisible, setLanguageVisible] = useState(false);
+  
+
+  // const retrieveData = async (item: any) => {
+  //   try {
+  //     const value = await AsyncStorage.getItem("key");
+  //     if (value!=="facedata") {
+  //       props.navigation.navigate("UpdateNewPin")
+  //       console.log("value",value);
+  //     }else{
+  //       props.navigation.navigate("OldPincode",{type:"pass"});
+  //     }
+  //   } catch (error) {
+  //     console.log(error);
+  //   }
+  // };
 
   const _navigateAction = (item: any) => {
     if (item.CARD === "language") {
       setLanguageVisible(true);
+    }
+    
+    // else if(item.card=="OldPincode"){
+    //      retrieveData(item)
+    // } 
+    
+    else {
+      props.navigation.navigate(item.card,{type:"pass"});
     }
   };
   useEffect(() => {
@@ -36,20 +62,23 @@ const UpdateAuthentication = (props: any) => {
     {
       label: "faceid",
       COLOR: "#D7EFFB",
-      icon: LocalImages.faceImage,
+      icon: LocalImages.faceidpic,
       selection: true,
+      card: "UpdateFaceId",
     },
     {
-      label: "passcode",
+      label: "Passcode",
       COLOR: "#FFDD9B",
       icon: LocalImages.passcordImage,
       selection: false,
+      card: "OldPincode",
     },
     {
       label: "touchid",
       COLOR: "#F6BDE9",
-      icon: LocalImages.touchImage,
+      icon: LocalImages.touchidpic,
       selection: false,
+      card: "UpdateTouchId",
     },
   ]);
 
@@ -93,7 +122,7 @@ const UpdateAuthentication = (props: any) => {
           <Image
             resizeMode="contain"
             style={styles.avatarImageContainer}
-            source={item.RIGHT_ICON}
+            source={LocalImages.sideArrowImage}
           ></Image>
         </View>
       </View>
@@ -103,30 +132,17 @@ const UpdateAuthentication = (props: any) => {
   const _keyExtractor = ({ label }: any) => label.toString();
   return (
     <View style={styles.sectionContainer}>
-      <View style={styles.sectionHeaderContainer}>
-        <TouchableOpacity
-        onPress={()=>props.navigation.goBack()}
-        >
-
-        <Image
-          resizeMode="contain"
-          style={styles.logoContainer}
-          source={LocalImages.backImage}
-        ></Image>
-        </TouchableOpacity>
-        <GenericText
-          style={[
-            {
-              fontSize: 20,
-              color: Screens.pureWhite,
-              fontWeight: "500",
-            },
-          ]}
-        >
-          {"updateauthenticaion"}
-        </GenericText>
-        <View />
-      </View>
+          <Header
+            isBack
+            letfIconPress={() => props.navigation.goBack()}
+            headingText= {"updateauthenticaion"}
+            linearStyle={styles.linearStyle}
+        ></Header>
+      <GenericText
+      style={{marginLeft:12,marginTop:10,fontSize:15,color:"gray",marginBottom:5}}
+      >
+        {"selectsecurity"}
+      </GenericText>
       <FlatList<any>
         data={authenticationList}
         renderItem={_renderItem}
@@ -140,6 +156,12 @@ const styles = StyleSheet.create({
   sectionContainer: {
     flex: 1,
     backgroundColor: Screens.colors.background,
+  },
+  linearStyle: {
+    height: 120,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    elevation: 4,
   },
   cardContainer: {
     flex: 1,

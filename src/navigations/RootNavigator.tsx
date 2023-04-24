@@ -1,4 +1,4 @@
-import "react-native-gesture-handler";
+
 import * as React from "react";
 import { createStackNavigator } from "@react-navigation/stack";
 import { NavigationContainer } from "@react-navigation/native";
@@ -19,6 +19,15 @@ import facePlaceHolderWidget from "../screens/FaceRegister/facePlaceHolderWidget
 import RegisterFace from "../screens/FaceRegister/RegisterFace";
 import SuccessFaceRegister from "../screens/FaceRegister/SuccessFaceRegister";
 import FingerPrintInstructionScreen from "../screens/FingerPrintRegister/FingerPrintInstructionScreen";
+import UploadDocument from "../screens/uploadDocuments/UploadDocument";
+import DocumentPreviewScreen from "../screens/uploadDocuments/DocumentPreviewScreen";
+import categoryScreen from "../screens/uploadDocuments/categoryScreen";
+import UploadQr from "../screens/UploadQr";
+import UploadDocumentPreviewScreen from "../screens/UploadQr/UploadDocumentPreviewScreen";
+import FaceCheck from "../screens/FaceRegister/FaceCheck";
+import LivenessCameraScreen from "../screens/uploadDocuments/LivenessCameraScreen";
+import VerifiDocumentScreen from "../screens/uploadDocuments/VerifiDocumentScreen";
+
 // Before rendering any navigation stack
 const animations: any = SlidAnimation;
 export default function RootNavigator() {
@@ -33,10 +42,19 @@ export default function RootNavigator() {
     FingerPrintInstructionScreen: FingerPrintInstructionScreen,
     RegisterScreen: RegisterScreen,
     BackupIdentity: BackupIdentity,
+    FaceCheck: FaceCheck,
     SetPin: SetPin,
     ConfirmPincode: ConfirmPincode,
     uploadDocumentsScreen: uploadDocumentsScreen,
     SuccessFaceRegister: SuccessFaceRegister,
+    UploadDocument: UploadDocument,
+    DocumentPreviewScreen: DocumentPreviewScreen,
+    categoryScreen: categoryScreen,
+    UploadQr: UploadQr,
+    UploadDocumentPreviewScreen: UploadDocumentPreviewScreen,
+    LivenessCameraScreen: LivenessCameraScreen,
+    VerifiDocumentScreen: VerifiDocumentScreen,
+  
   };
 
   function AuthStack() {
@@ -83,13 +101,57 @@ export default function RootNavigator() {
           name={"PasswordCheck"}
           component={PasswordCheck}
         />
-
+        <Stack.Screen
+          options={{
+            ...animations,
+          }}
+          name={"FaceCheck"}
+          component={FaceCheck}
+        />
         <Stack.Screen
           options={{
             ...animations,
           }}
           name={"DrawerNavigator"}
           component={DrawerNavigator}
+        />
+        <Stack.Screen
+          options={{
+            ...animations,
+          }}
+          name={"Security"}
+          component={Security}
+        />
+
+        <Stack.Screen
+          options={{
+            ...animations,
+          }}
+          name={"RegisterFace"}
+          component={RegisterFace}
+        />
+
+        <Stack.Screen
+          options={{
+            ...animations,
+          }}
+          name={"SetPin"}
+          component={SetPin}
+        />
+
+        <Stack.Screen
+          options={{
+            ...animations,
+          }}
+          name={"FingerPrintInstructionScreen"}
+          component={FingerPrintInstructionScreen}
+        />
+        <Stack.Screen
+          options={{
+            ...animations,
+          }}
+          name={"ConfirmPincode"}
+          component={ConfirmPincode}
         />
       </Stack.Navigator>
     </NavigationContainer>

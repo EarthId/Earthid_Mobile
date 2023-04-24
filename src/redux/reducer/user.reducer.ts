@@ -1,3 +1,4 @@
+import { SnackBar } from "../../components/SnackBar";
 import { ACTION_TYPES } from "../actions/types";
 const initialState = {
   isLoading: false,
@@ -16,6 +17,7 @@ export const userReducer = (state = initialState, { type, payload }: any) => {
       return {
         ...state,
         ...payload,
+        isLoading: false,
         isGeneratedKeySuccess: true,
         isGeneratedKeyError: false,
       };
@@ -23,6 +25,7 @@ export const userReducer = (state = initialState, { type, payload }: any) => {
       return {
         ...state,
         ...payload,
+        isLoading: false,
         isGeneratedKeySuccess: false,
         isGeneratedKeyError: true,
       };
@@ -44,12 +47,44 @@ export const accountReducer = (state = {}, { type, payload }: any) => {
         ...state,
         ...payload,
         isAccountCreatedSuccess: true,
+        isLoading: false,
         isAccountCreatedFailure: false,
       };
     case ACTION_TYPES.CREATED_ACCOUNT_ERROR:
       return {
         ...state,
         ...payload,
+        isLoading: false,
+        isAccountCreatedSuccess: false,
+        isAccountCreatedFailure: true,
+      };
+    default:
+      return state;
+  }
+};
+
+export const schemaReducer = (state = {}, { type, payload }: any) => {
+  switch (type) {
+    case ACTION_TYPES.CREATEDSCHEMA:
+      return {
+        ...state,
+        isLoading: true,
+        isAccountCreatedSuccess: false,
+        isAccountCreatedFailure: false,
+      };
+    case ACTION_TYPES.CREATED_SCHEMA_RESPONSE:
+      return {
+        ...state,
+        ...payload,
+        isAccountCreatedSuccess: true,
+        isLoading: false,
+        isAccountCreatedFailure: false,
+      };
+    case ACTION_TYPES.CREATED_SCHEMA_ERROR:
+      return {
+        ...state,
+        ...payload,
+        isLoading: false,
         isAccountCreatedSuccess: false,
         isAccountCreatedFailure: true,
       };
@@ -64,22 +99,22 @@ export const contractReducer = (state = {}, { type, payload }: any) => {
       return {
         ...state,
         isLoading: true,
-        isContractCreatedSuccessfull: false,
-        isContractCreatedFailure: false,
+        isUserDetailsCreatedSuccessfull: false,
+        isUserDetailsCreatedFailure: false,
       };
     case ACTION_TYPES.CONTRACT_CALL_RESPONSE:
       return {
         ...state,
         ...payload,
-        isContractCreatedSuccessfull: true,
-        isContractCreatedFailure: false,
+        isUserDetailsCreatedSuccessfull: true,
+        isUserDetailsCreatedFailure: false,
       };
     case ACTION_TYPES.CONTRACT_CALL_ERROR:
       return {
         ...state,
         ...payload,
-        isContractCreatedSuccessfull: false,
-        isContractCreatedFailure: true,
+        isUserDetailsCreatedSuccessfull: false,
+        isUserDetailsCreatedFailure: true,
       };
     default:
       return state;
@@ -89,9 +124,58 @@ export const contractReducer = (state = {}, { type, payload }: any) => {
 export const approveOTPReducer = (state = {}, { type, payload }: any) => {
   switch (type) {
     case ACTION_TYPES.APPROVE_OTP:
-      return { ...state, isLoading: true };
+      return {
+        ...state,
+        isApproveLoading: true,
+        isApproveOtpSuccess: false,
+        isApproveOtpFailure: false,
+      };
     case ACTION_TYPES.APPROVEOTP_RESPONSE:
-      return { ...state, ...payload };
+      return {
+        ...state,
+        ...payload,
+        isApproveLoading: false,
+        isApproveOtpSuccess: true,
+        isApproveOtpFailure: false,
+      };
+    case ACTION_TYPES.APPROVEOTP_ERROR:
+      return {
+        ...state,
+        ...payload,
+        isApproveLoading: false,
+        isApproveOtpSuccess: false,
+        isApproveOtpFailure: true,
+      };
+    default:
+      return state;
+  }
+};
+
+export const getHistoryReducer = (state = {}, { type, payload }: any) => {
+  switch (type) {
+    case ACTION_TYPES.GET_HISTORY_CALL:
+      return {
+        ...state,
+        isLoading: true,
+        isSuccess: false,
+        isError: false,
+      };
+    case ACTION_TYPES.GET_HISTORY_CALL_RESPONSE:
+      return {
+        ...state,
+        ...payload,
+        isLoading: false,
+        isSuccess: true,
+        isError: false,
+      };
+    case ACTION_TYPES.GET_HISTORY_CALL_ERROR:
+      return {
+        ...state,
+        ...payload,
+        isLoading: false,
+        isSuccess: false,
+        isError: true,
+      };
     default:
       return state;
   }
@@ -101,6 +185,8 @@ export const documentListReducer = (state = {}, { type, payload }: any) => {
   switch (type) {
     case ACTION_TYPES.SAVE_DOCUMENTS:
       return { ...state, ...payload };
+      case ACTION_TYPES.UPDATE_DOCUMENTS:
+        return { ...state, ...payload };
     default:
       return state;
   }

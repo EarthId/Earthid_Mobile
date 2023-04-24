@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import {
   View,
   StyleSheet,
@@ -6,6 +6,7 @@ import {
   Image,
   FlatList,
   Alert,
+  AsyncStorage,
 } from "react-native";
 import { Screens } from "../../themes/index";
 import { values } from "lodash";
@@ -19,6 +20,8 @@ import BottomSheet from "../../components/Bottomsheet";
 import { useSSR } from "react-i18next";
 import il8n, { getUserLanguagePreference } from ".././../utils/i18n";
 import { AppLanguage } from "../../typings/enums/AppLanguage";
+import { LanguageContext } from "../../components/LanguageContext/LanguageContextProvider";
+import Header from "../../components/Header";
 
 const CustomDrawer = (props: any) => {
   const dispatch = useAppDispatch();
@@ -31,18 +34,54 @@ const CustomDrawer = (props: any) => {
       props.navigation.navigate("UpdateAuthentication");
     }
   };
+  const [langugeList, setLanguageList] = useState([
+    { label: "English", value: AppLanguage.ENGLISH, selection: true },
+    { label: "Spanish", value: AppLanguage.SPANISH, selection: false },
+    { label: "Portuguese", value: AppLanguage.PORTUGUESE, selection: false },
+  ]);
+
   useEffect(() => {
     getStoredLanguage();
   }, []);
 
   const getStoredLanguage = async () => {
-    const getUserLanguagePreferences = await getUserLanguagePreference();
-    console.log("getUserLanguagePreferences", getUserLanguagePreferences);
+    const getUserLanguagePreferences = await AsyncStorage.getItem(
+      "setLanguage"
+    );
+    let langugeLists = [];
+
+    if (getUserLanguagePreferences === AppLanguage.ENGLISH) {
+      console.log("getUserLanguagePreferences=====>");
+      langugeLists = langugeList.map((item, index) => {
+        if (index === 0) {
+          item.selection = true;
+        } else {
+          item.selection = false;
+        }
+        return item;
+      });
+    } else if (getUserLanguagePreferences === AppLanguage.PORTUGUESE) {
+      langugeLists = langugeList.map((item, index) => {
+        if (index === 2) {
+          item.selection = true;
+        } else {
+          item.selection = false;
+        }
+        return item;
+      });
+    } else {
+      langugeLists = langugeList.map((item, index) => {
+        if (index === 1) {
+          item.selection = true;
+        } else {
+          item.selection = false;
+        }
+        return item;
+      });
+    }
+
+    setLanguageList([...langugeLists]);
   };
-  const [langugeList, setLanguageList] = useState([
-    { label: "English", value: AppLanguage.ENGLISH, selection: true },
-    { label: "Spanish", value: AppLanguage.SPANISH, selection: false },
-  ]);
 
   const _renderItem = ({ item }: { item: any }) => (
     <TouchableOpacity onPress={() => _navigateAction(item)}>
@@ -70,7 +109,6 @@ const CustomDrawer = (props: any) => {
                 {
                   fontSize: 14,
                   marginHorizontal: 10,
-
                   color: Screens.black,
                   fontWeight: "500",
                 },
@@ -95,43 +133,26 @@ const CustomDrawer = (props: any) => {
     il8n.changeLanguage(item.value);
     const languageList = langugeList.map((itemData, inde) => {
       if (itemData.label === item.label) {
-        itemData.selection = true;
+        itemData.selection = !itemData.selection;
       } else {
         itemData.selection = false;
       }
       return itemData;
     });
     setLanguageList(languageList);
+    setLanguageVisible(false);
   };
 
   const _keyExtractor = ({ TITLE }: any) => TITLE.toString();
   return (
     <View style={styles.sectionContainer}>
-      <View style={styles.sectionHeaderContainer}>
-        <TouchableOpacity
-        onPress={()=>props.navigation.goBack()}
-        >
-
-        <Image
-          resizeMode="contain"
-          style={styles.logoContainer}
-          source={LocalImages.backImage}
-        ></Image>
-        </TouchableOpacity>
-        <GenericText
-          style={[
-            {
-              fontSize: 20,
-              color: Screens.pureWhite,
-              fontWeight: "500",
-              left:-10
-            },
-          ]}
-        >
-          {"setting"}
-        </GenericText>
-        <View />
-      </View>
+        <Header
+            isBack
+            letfIconPress={() => props.navigation.goBack()}
+            headingText= {"setting"}
+            linearStyle={styles.linearStyle}
+        ></Header>
+     
       <FlatList<any>
         data={SETTING_LIST}
         renderItem={_renderItem}
@@ -139,22 +160,35 @@ const CustomDrawer = (props: any) => {
       />
       <BottomSheet
         onClose={() => setLanguageVisible(false)}
-        height={200}
+        height={300}
         isVisible={languageVisible}
       >
         <View
           style={{
-            height: 200,
+            height: 280,
             width: "100%",
             paddingHorizontal: 10,
           }}
         >
+          <GenericText
+            style={[
+              {
+                fontSize: 18,
+                marginHorizontal: 20,
+                marginVertical: 25,
+                color: Screens.black,
+                fontWeight: "500",
+              },
+            ]}
+          >
+            {"selectLanguages"}
+          </GenericText>
           {langugeList.map((item, index) => (
             <TouchableOpacity onPress={() => selectLanguage(item)}>
               <View
                 style={{
-                  marginVertical: 20,
-                  backgroundColor: item.selection ? "green" : "red",
+                  marginVertical: 7,
+                  backgroundColor: item.selection ? "#e6ffe6" : "#fff",
                   padding: 10,
                   borderRadius: 8,
                   justifyContent: "space-between",
@@ -166,7 +200,7 @@ const CustomDrawer = (props: any) => {
                     {
                       fontSize: 18,
                       marginHorizontal: 20,
-                      color: Screens.pureWhite,
+                      color: Screens.black,
                       fontWeight: "500",
                     },
                   ]}
@@ -177,7 +211,7 @@ const CustomDrawer = (props: any) => {
                   resizeMode="contain"
                   style={[
                     styles.avatarImageContainer,
-                    { tintColor: item.selection ? "#fff" : "#000" },
+                    { tintColor: item.selection ? "green" : "#fff" },
                   ]}
                   source={LocalImages.successTikImage}
                 ></Image>
@@ -194,6 +228,12 @@ const styles = StyleSheet.create({
   sectionContainer: {
     flex: 1,
     backgroundColor: Screens.colors.background,
+  },
+  linearStyle: {
+    height: 120,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    elevation: 4,
   },
   cardContainer: {
     flex: 1,

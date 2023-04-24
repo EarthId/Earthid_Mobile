@@ -1,22 +1,12 @@
-import React, { useEffect, useState } from "react";
-import {
-  View,
-  StyleSheet,
-  Image,
-  TouchableOpacity,
-  ActivityIndicator,
-} from "react-native";
+import React from "react";
+import { View, StyleSheet, Image, TouchableOpacity } from "react-native";
 
 import Button from "../../components/Button";
-import SuccessPopUp from "../../components/Loader";
-import AnimatedLoader from "../../components/Loader/AnimatedLoader";
 import GenericText from "../../components/Text";
 import { LocalImages } from "../../constants/imageUrlConstants";
-import { useFetch } from "../../hooks/use-fetch";
 import { Screens } from "../../themes/index";
-import { validateDocsApi } from "../../utils/earthid_account";
 
-const facePlaceHolderWidget = (props: any) => {
+const facePlaceHolderWidget = (props: any, route: any) => {
   return (
     <View style={styles.sectionContainer}>
       <View style={{ position: "absolute", top: 20, right: 20, zIndex: 100 }}>
@@ -45,7 +35,7 @@ const facePlaceHolderWidget = (props: any) => {
             },
           ]}
         >
-          {"Enroll Face"}
+          {"enrollface"}
         </GenericText>
 
         <GenericText
@@ -60,9 +50,7 @@ const facePlaceHolderWidget = (props: any) => {
             },
           ]}
         >
-          {
-            "For best results, keep the device 20cm to 50cm from your face in an environment that is not too bright or too dim."
-          }
+          {"forbestresults"}
         </GenericText>
       </View>
 
@@ -80,7 +68,7 @@ const facePlaceHolderWidget = (props: any) => {
             tintColor: Screens.pureWhite,
           },
         }}
-        title={"Continue"}
+        title={"continue"}
       ></Button>
     </View>
   );

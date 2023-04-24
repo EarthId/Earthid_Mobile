@@ -8,3 +8,20 @@ export const savingCustomQrData =
       qrListData,
     });
   };
+export const savingProfilePictures =
+  (profileData: any) =>
+  async (dispatch: any): Promise<any> => {
+    dispatch({
+      type: ACTION_TYPES.SAVE_PROFILE_PIC,
+      profileData: profileData,
+    });
+  };
+
+export const SaveSecurityConfiguration =
+  (securityData: []) =>
+  async (dispatch: any): Promise<any> => {
+    dispatch({
+      type: ACTION_TYPES.SAVE_SECURITY,
+      securityData: securityData,
+    });
+  };
